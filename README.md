@@ -1,2 +1,2 @@
-# Shiden-Dashboard-Web
+# Shiden-Dashboard
 資産ダッシュボードの公開ホスティング（実データは非公開リポジトリから読込）
