@@ -1,0 +1,1780 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hayahide Dashboard</title>
+<style>
+  /* ================================================================
+     Hayahide Dashboard — ダーク×紫テーマ
+     系列色は検証済みパレット（validate_palette.js 全チェックPASS
+     surface #16131d に対して検証済み）
+     ================================================================ */
+  :root {
+    --page:        #0c0a11;
+    --surface:     #16131d;
+    --surface-2:   #1d1926;
+    --ink:         #f2f0f7;
+    --ink-2:       #b8b3c7;
+    --muted:       #7d7890;
+    --grid:        #2a2536;
+    --baseline:    #383344;
+    --border:      rgba(158,140,255,0.14);
+    --accent:      #9085e9;   /* 紫 — Hayahideブランド */
+    --accent-hi:   #b5aaff;
+    --accent-deep: #5b4bc4;
+    --accent-soft: rgba(144,133,233,0.10);
+    --good:        #34c85a;
+    --s1: #3987e5;   /* 現金・預金 */
+    --s2: #199e70;   /* 金（現物） */
+    --s3: #c98500;   /* 土地・不動産 */
+    --s4: #9085e9;   /* コレクション */
+    --s5: #e66767;   /* その他 */
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { color-scheme: dark; }
+  body {
+    background:
+      radial-gradient(1000px 500px at 80% -10%, rgba(120,90,240,0.16), transparent 60%),
+      radial-gradient(800px 400px at -10% 20%, rgba(90,60,200,0.10), transparent 60%),
+      var(--page);
+    color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    line-height: 1.6;
+    padding: 36px 24px 64px;
+    min-height: 100vh;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  /* ---- ヘッダー ---- */
+  header { margin-bottom: 30px; }
+  .brand { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  .brand h1 {
+    font-size: 22px; font-weight: 700; letter-spacing: 0.02em;
+    background: linear-gradient(90deg, var(--ink), var(--accent-hi));
+    -webkit-background-clip: text; background-clip: text; color: transparent;
+  }
+  .brand .sub { color: var(--muted); font-size: 13px; }
+  .brand::before {
+    content: "";
+    display: inline-block; width: 10px; height: 22px;
+    background: linear-gradient(180deg, var(--accent-hi), var(--accent-deep));
+    border-radius: 3px; align-self: center;
+    box-shadow: 0 0 14px rgba(144,133,233,0.55);
+  }
+  .asof { color: var(--muted); font-size: 12px; margin-top: 4px; }
+  .applinks { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
+  .applink {
+    display: flex; align-items: center; gap: 14px; text-decoration: none;
+    color: var(--ink); background: linear-gradient(135deg, rgba(144,133,233,0.16), transparent 60%), var(--surface);
+    border: 1px solid var(--border); border-radius: 14px; padding: 14px 20px 14px 16px;
+    transition: border-color .2s, transform .15s, box-shadow .2s;
+  }
+  .applink:hover { border-color: rgba(158,140,255,0.45); transform: translateY(-2px); box-shadow: 0 8px 24px rgba(80,60,200,0.2); }
+  .applink:focus-visible { outline: 2px solid var(--accent-hi); outline-offset: 2px; }
+  .applink .ico {
+    font-size: 30px; line-height: 1; width: 52px; height: 52px; flex: none;
+    display: flex; align-items: center; justify-content: center;
+    background: var(--accent-soft); border: 1px solid var(--border); border-radius: 12px;
+  }
+  .applink .txt { display: flex; flex-direction: column; }
+  .applink .txt b { font-size: 15px; font-weight: 700; }
+  .applink .txt small { font-size: 12px; color: var(--muted); }
+  /* 金額プライバシー（職場PCなどで金額を隠す） */
+  .privacy-btn {
+    font-family: inherit; font-size: 12px; font-weight: 700; cursor: pointer;
+    color: var(--accent-hi); background: var(--accent-soft);
+    border: 1px solid var(--border); border-radius: 999px; padding: 6px 14px;
+    margin-top: 12px; transition: border-color .2s;
+  }
+  .privacy-btn:hover { border-color: rgba(158,140,255,0.4); }
+  .privacy-btn:focus-visible { outline: 2px solid var(--accent-hi); outline-offset: 2px; }
+  body.hide-money :is(#hero-value, #hero-delta, .tile .value, .digsum .v,
+    #calc-result .rrange, #calc-result .rmid, table.psa td.num, table.psa tfoot td,
+    .legend-money, .counter-val, .counter-stats, .counter .clast, .counter .trend) {
+    filter: blur(9px); user-select: none; -webkit-user-select: none;
+  }
+
+  /* ---- ヒーロー（総資産） ---- */
+  .hero {
+    background:
+      linear-gradient(135deg, rgba(144,133,233,0.14), transparent 45%),
+      var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 30px 34px;
+    margin-bottom: 20px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 8px 40px rgba(80,60,200,0.10);
+  }
+  .hero::after {
+    content: "";
+    position: absolute; top: -60px; right: -40px; width: 320px; height: 320px;
+    background: radial-gradient(circle, rgba(144,133,233,0.20), transparent 65%);
+    pointer-events: none;
+  }
+  .hero .label { color: var(--ink-2); font-size: 13px; font-weight: 600; letter-spacing: 0.08em; }
+  .hero .value {
+    font-size: 48px; font-weight: 700; letter-spacing: -0.01em; margin: 2px 0;
+    text-shadow: 0 0 30px rgba(144,133,233,0.30);
+  }
+  .hero .delta { font-size: 13px; color: var(--good); font-weight: 600; }
+  .hero .delta.down { color: var(--s5); }
+
+  /* ---- スタットタイル ---- */
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+  .tile {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 18px 20px 16px;
+    transition: border-color .2s, transform .2s;
+  }
+  .tile:hover { border-color: rgba(158,140,255,0.35); transform: translateY(-2px); }
+  .tile .dot {
+    display: inline-block; width: 10px; height: 10px; border-radius: 3px;
+    margin-right: 7px; vertical-align: baseline;
+  }
+  .tile .label { font-size: 12px; color: var(--ink-2); font-weight: 600; }
+  .tile .value { font-size: 24px; font-weight: 700; margin-top: 4px; }
+  .tile .note { font-size: 11px; color: var(--muted); margin-top: 2px; }
+
+  /* ---- カード共通 ---- */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 24px 28px;
+    margin-bottom: 20px;
+  }
+  .card h2 {
+    font-size: 13px; font-weight: 700; letter-spacing: 0.10em;
+    color: var(--accent-hi); margin-bottom: 18px;
+  }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 760px) { .grid-2 { grid-template-columns: 1fr; } }
+
+  /* ---- 構成バー（積み上げ・2pxギャップ） ---- */
+  .compbar { display: flex; height: 28px; border-radius: 7px; overflow: hidden; gap: 2px; }
+  .compbar div { min-width: 4px; }
+  .complegend { display: flex; flex-wrap: wrap; gap: 12px 22px; margin-top: 14px; }
+  .complegend .item { font-size: 12.5px; color: var(--ink-2); display: flex; align-items: center; gap: 7px; }
+  .complegend .sw { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+  .complegend b { color: var(--ink); font-weight: 700; }
+
+  /* ---- 推移チャート ---- */
+  .chartbox { position: relative; }
+  #trend { width: 100%; height: auto; display: block; }
+  .tooltip {
+    position: absolute;
+    background: var(--surface-2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+    font-size: 12px;
+    pointer-events: none;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+    display: none;
+    white-space: nowrap;
+    z-index: 10;
+  }
+  .tooltip .t-date { color: var(--muted); font-size: 11px; }
+  .tooltip .t-val { font-weight: 700; font-size: 14px; }
+
+  /* ---- プロジェクト進捗 ---- */
+  .proj { padding: 13px 2px; border-bottom: 1px solid var(--grid); }
+  .proj:last-child { border-bottom: none; }
+  .proj .top { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .proj .name { font-size: 14px; font-weight: 700; }
+  .badge {
+    font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em;
+    padding: 2px 9px; border-radius: 999px;
+    border: 1px solid var(--border);
+    color: var(--accent-hi); background: var(--accent-soft);
+    flex: none;
+  }
+  .badge.pA { color: #ffd76a; border-color: rgba(255,215,106,0.35); background: rgba(255,215,106,0.08); }
+  .proj .status { font-size: 12px; color: var(--muted); margin-left: auto; }
+  .pbar {
+    height: 7px; border-radius: 999px; background: var(--surface-2);
+    margin-top: 9px; overflow: hidden;
+  }
+  .pbar .fill {
+    height: 100%; border-radius: 999px;
+    background: linear-gradient(90deg, var(--accent-deep), var(--accent-hi));
+    box-shadow: 0 0 10px rgba(144,133,233,0.45);
+  }
+  .proj .pct { font-size: 11px; color: var(--ink-2); font-weight: 700; }
+  /* 日次カウンター 同期バー・設定 */
+  .sync-bar { display: flex; align-items: center; gap: 14px; }
+  .gh-status { font-size: 11px; color: var(--muted); }
+  .sync-cfg { display: none; margin-bottom: 16px; padding: 14px 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+  .sync-cfg.open { display: block; }
+  .sync-cfg label { font-size: 11.5px; color: var(--ink-2); display: block; margin-bottom: 10px; }
+  .sync-cfg .cfg-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 8px; }
+  .sync-cfg input {
+    font-family: inherit; font-size: 13px; background: var(--surface); color: var(--ink);
+    border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px;
+  }
+  .sync-cfg input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  .sync-cfg .cfg-actions { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
+
+  /* 日次カウンター（イベントログ方式） */
+  .counter-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .counter {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 14px; padding: 16px 18px;
+  }
+  .counter .chead { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .counter .cemoji { font-size: 22px; }
+  .counter .cname { font-size: 14px; font-weight: 700; }
+  .counter .cgoal { font-size: 11px; color: var(--muted); margin-left: auto; }
+  .counter .cbig { display: flex; align-items: baseline; gap: 8px; margin-bottom: 10px; }
+  .counter .counter-val { font-size: 30px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .counter .cunit { font-size: 12px; color: var(--muted); }
+  /* ボタン群 */
+  .counter .cbtns { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+  .counter .cbtn {
+    cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 700; line-height: 1;
+    border: 1px solid var(--border); border-radius: 9px; background: var(--surface); color: var(--ink);
+    padding: 9px 12px; display: flex; align-items: center; justify-content: center;
+  }
+  .counter .cbtn.rec { background: linear-gradient(135deg, var(--accent-deep), var(--accent)); color: #fff; border: none; padding: 9px 16px; }
+  .counter .cbtn.star { font-size: 16px; padding: 8px 10px; }
+  .counter .cbtn.undo { color: var(--muted); font-size: 12px; font-weight: 600; }
+  .counter .cbtn.sel { background: linear-gradient(135deg, var(--accent-deep), var(--accent)); color: #fff; border-color: transparent; }
+  .counter .crow { flex: 1 0 100%; display: flex; gap: 6px; align-items: center; }
+  .counter .rlabel { font-size: 12px; color: var(--muted); min-width: 1.5em; }
+  .counter .cbtn:hover { border-color: rgba(158,140,255,0.45); }
+  .counter .cbtn:focus-visible { outline: 2px solid var(--accent-hi); outline-offset: 2px; }
+  .counter .cbtn:active { transform: scale(0.95); }
+  .counter .counter-stats { font-size: 11.5px; color: var(--ink-2); margin-top: 12px; }
+  .counter .counter-stats b { color: var(--ink); font-weight: 700; }
+  .counter .clast { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  /* 推移表示（記録はせず、日次件数の棒と量/質/気分の折れ線を表示） */
+  .counter .trend { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
+  .counter .trend-row { display: flex; align-items: center; gap: 8px; }
+  .counter .trend-row .tlabel { font-size: 11px; color: var(--muted); min-width: 2.4em; text-align: right; flex: none; }
+  .counter .trend .spark { flex: 1; display: block; width: 100%; height: auto; overflow: visible; }
+  .counter .taxis { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 2px; padding-left: calc(2.4em + 8px); }
+  .counter .retro { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--grid); display: none; }
+  .counter .retro.open { display: block; }
+  .counter .retro .rrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .counter .retro input, .counter .retro select {
+    font-family: inherit; font-size: 13px; background: var(--surface); color: var(--ink);
+    border: 1px solid var(--border); border-radius: 8px; padding: 7px 9px; color-scheme: dark;
+  }
+  .counter .retro label { font-size: 11px; color: var(--muted); width: 100%; }
+
+  /* ヘルスケアの状態チップ（プロジェクト進捗のスタイルを流用） */
+  .hstatus {
+    font-size: 10.5px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+    border: 1px solid var(--border); flex: none;
+  }
+  .hstatus.good { color: var(--good); background: rgba(52,200,90,0.10); border-color: rgba(52,200,90,0.30); }
+  .hstatus.work { color: var(--accent-hi); background: var(--accent-soft); }
+  .hstatus.watch { color: #ffd76a; background: rgba(255,215,106,0.08); border-color: rgba(255,215,106,0.35); }
+  .proj .memo-inline { font-size: 12px; color: var(--muted); margin-left: auto; }
+
+  /* ---- 子株価格見積もりツール ---- */
+  .calc-lead { font-size: 12.5px; color: var(--ink-2); margin: -6px 0 16px; }
+  .calc-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+  .calc-field label { display: block; font-size: 12px; color: var(--ink-2); font-weight: 600; margin-bottom: 5px; }
+  .calc-field input, .calc-field select {
+    width: 100%; font-family: inherit; font-size: 14px;
+    background: var(--surface-2); color: var(--ink); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 11px;
+  }
+  .calc-field input:focus, .calc-field select:focus { outline: 2px solid var(--accent); border-color: transparent; }
+  .calc-field .hint { font-size: 11px; color: var(--muted); margin-top: 4px; }
+  .calc-result {
+    margin-top: 20px; padding: 18px 20px; border-radius: 12px;
+    background: linear-gradient(135deg, rgba(144,133,233,0.14), transparent 60%), var(--surface-2);
+    border: 1px solid var(--border);
+  }
+  .calc-result .rlabel { font-size: 12px; color: var(--ink-2); font-weight: 600; }
+  .calc-result .rrange { font-size: 30px; font-weight: 700; margin: 2px 0; text-shadow: 0 0 24px rgba(144,133,233,0.3); }
+  .calc-result .rmid { font-size: 12px; color: var(--muted); }
+  .calc-result .rnote { font-size: 11.5px; color: var(--accent-hi); margin-top: 8px; }
+
+  /* ---- カードヘッダー（見出し＋追加ボタン） ---- */
+  .cardhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; }
+  .cardhead h2 { margin-bottom: 0; }
+  .addbtn {
+    font-family: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer;
+    color: #fff; padding: 7px 14px; border-radius: 999px; border: none;
+    background: linear-gradient(90deg, var(--accent-deep), var(--accent));
+    box-shadow: 0 0 12px rgba(144,133,233,0.4); transition: transform .15s, box-shadow .15s;
+  }
+  .addbtn:hover { transform: translateY(-1px); box-shadow: 0 0 18px rgba(144,133,233,0.6); }
+  .addbtn:focus-visible { outline: 2px solid var(--accent-hi); outline-offset: 2px; }
+  .addactions { display: flex; gap: 16px; margin-top: 14px; flex-wrap: wrap; }
+  .linkbtn {
+    font-family: inherit; font-size: 12px; cursor: pointer; background: none; border: none;
+    color: var(--accent-hi); padding: 4px 0; text-decoration: underline; text-underline-offset: 3px;
+  }
+  .linkbtn.danger { color: var(--s5); }
+  .linkbtn:focus-visible { outline: 2px solid var(--accent-hi); outline-offset: 2px; }
+  .addnote {
+    margin-top: 14px; font-size: 12px; color: var(--ink-2);
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px;
+  }
+  .addnote textarea {
+    width: 100%; margin-top: 8px; min-height: 120px; resize: vertical;
+    font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; font-size: 11.5px;
+    background: var(--page); color: var(--ink); border: 1px solid var(--border);
+    border-radius: 8px; padding: 10px;
+  }
+
+  /* ---- モーダル ---- */
+  .modal-bg {
+    position: fixed; inset: 0; background: rgba(6,4,12,0.7); backdrop-filter: blur(3px);
+    display: none; align-items: center; justify-content: center; padding: 20px; z-index: 100;
+  }
+  .modal-bg.open { display: flex; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 24px 26px; width: 100%; max-width: 420px;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+  }
+  .modal h3 { font-size: 16px; font-weight: 700; margin-bottom: 18px; color: var(--accent-hi); }
+  .field { margin-bottom: 13px; }
+  .field label { display: block; font-size: 12px; color: var(--ink-2); font-weight: 600; margin-bottom: 5px; }
+  .field input {
+    width: 100%; font-family: inherit; font-size: 14px;
+    background: var(--surface-2); color: var(--ink); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 11px;
+  }
+  .field input:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+  .field .hint { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 14px; margin-top: 20px; align-items: center; }
+
+  /* ---- PSA鑑定カード ---- */
+  table.psa { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+  table.psa th {
+    text-align: left; font-size: 11px; color: var(--muted); font-weight: 600;
+    letter-spacing: 0.05em; padding: 6px 10px; border-bottom: 1px solid var(--baseline);
+  }
+  table.psa td { padding: 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+  table.psa th.num, table.psa td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.psa .grade {
+    font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px;
+    color: var(--accent-hi); background: var(--accent-soft);
+    border: 1px solid var(--border);
+  }
+  table.psa .gain { color: var(--good); font-weight: 700; }
+  table.psa .loss { color: var(--s5); font-weight: 700; }
+  table.psa .dim { color: var(--muted); font-size: 12px; }
+  table.psa td.memo { white-space: normal; color: var(--ink-2); font-size: 12px; min-width: 160px; }
+  table.psa .demand {
+    font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border);
+  }
+  table.psa .demand.hi  { color: var(--good); background: rgba(52,200,90,0.10); border-color: rgba(52,200,90,0.30); }
+  table.psa .demand.mid { color: var(--accent-hi); background: var(--accent-soft); }
+  table.psa .demand.lo  { color: var(--muted); background: var(--surface-2); }
+  table.psa .plat {
+    font-size: 11px; font-weight: 700; padding: 2px 9px; border-radius: 6px; border: 1px solid var(--border);
+    color: var(--ink-2); background: var(--surface-2);
+  }
+  table.psa .plat.kindle { color: #ff9d5c; border-color: rgba(255,157,92,0.30); background: rgba(255,157,92,0.08); }
+  table.psa .plat.fanza  { color: #e66767; border-color: rgba(230,103,103,0.30); background: rgba(230,103,103,0.08); }
+  table.psa .plat.dlsite { color: #3987e5; border-color: rgba(57,135,229,0.30); background: rgba(57,135,229,0.08); }
+
+  /* デジタルコレクションのサマリー（プラットフォーム別） */
+  .digsum { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+  .digsum .box {
+    background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 10px 14px; min-width: 130px;
+  }
+  .digsum .box .p { font-size: 11px; color: var(--ink-2); font-weight: 700; }
+  .digsum .box .v { font-size: 16px; font-weight: 700; margin-top: 2px; }
+  .digsum .box .c { font-size: 11px; color: var(--muted); }
+  .dignote { margin-top: 12px; font-size: 11px; color: var(--muted); }
+  table.psa tfoot td { border-bottom: none; border-top: 1px solid var(--baseline); font-weight: 700; }
+
+  /* ---- 資格・スキル ---- */
+  ul.plain { list-style: none; }
+  .cert {
+    display: flex; justify-content: space-between; align-items: baseline;
+    padding: 10px 2px; border-bottom: 1px solid var(--grid);
+    font-size: 14px;
+  }
+  .cert:last-child { border-bottom: none; }
+  .cert .date { color: var(--muted); font-size: 12px; }
+  .skillgroup { margin-bottom: 16px; }
+  .skillgroup:last-child { margin-bottom: 0; }
+  .skillgroup .gname { font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 8px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip {
+    font-size: 13px; padding: 5px 12px; border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--accent-soft);
+    color: var(--ink);
+  }
+  .chip .lv { color: var(--accent-hi); font-weight: 700; margin-left: 5px; font-size: 11px; }
+
+  footer { color: var(--muted); font-size: 11px; text-align: center; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="brand">
+      <h1>Hayahide Dashboard</h1>
+      <span class="sub">Hayahide — Personal Asset Overview</span>
+    </div>
+    <div class="asof" id="asof"></div>
+    <button class="privacy-btn" id="privacy-toggle" type="button"></button>
+    <nav class="applinks">
+      <a class="applink" href="https://hayahide-cloud.github.io/Shiden-Expense/" target="_blank" rel="noopener">
+        <span class="ico">🧾</span>
+        <span class="txt"><b>Shiden Expense</b><small>経費精算アプリを開く</small></span>
+      </a>
+      <a class="applink" href="https://hayahide-cloud.github.io/Shiden-LifeLogger/" target="_blank" rel="noopener">
+        <span class="ico">⚡</span>
+        <span class="txt"><b>紫電ライフロガー</b><small>日次カウンターを開く</small></span>
+      </a>
+    </nav>
+  </header>
+
+  <!-- 日次カウンター（最上部・イベントログ方式） -->
+  <div class="card">
+    <div class="cardhead">
+      <h2>日次カウンター</h2>
+      <div class="sync-bar">
+        <span id="gh-status" class="gh-status"></span>
+        <button class="linkbtn" id="gh-sync" type="button">🔄 更新</button>
+        <button class="linkbtn" id="gh-config" type="button">⚙️ 読込設定</button>
+      </div>
+    </div>
+    <div class="sync-cfg" id="gh-cfg-panel">
+      <label>GitHub Private リポジトリの記録を読み込み、推移を表示します（このダッシュボードは記録せず表示のみ）。記録は各端末のカウンターページから行います。Fine-grained トークンは対象リポジトリの Contents 読み取り権限で発行してください。</label>
+      <div class="cfg-grid">
+        <input id="cfg-owner" placeholder="owner（例: hayahide-cloud）">
+        <input id="cfg-repo"  placeholder="repo（例: hayahide-log）">
+        <input id="cfg-path"  placeholder="path（例: counters.json）" value="counters.json">
+        <input id="cfg-branch" placeholder="branch（例: main）" value="main">
+        <input id="cfg-token" type="password" placeholder="Fine-grained token（github_pat_...）">
+      </div>
+      <div class="cfg-actions">
+        <button class="addbtn" id="cfg-save" type="button">保存して同期</button>
+        <button class="linkbtn" id="cfg-clear" type="button">この端末の設定を削除</button>
+      </div>
+    </div>
+    <div id="counters" class="counter-grid"></div>
+  </div>
+
+  <!-- 総資産ヒーロー -->
+  <div class="hero">
+    <div class="label">総資産（金融・現物）</div>
+    <div class="value" id="hero-value"></div>
+    <div class="delta" id="hero-delta"></div>
+  </div>
+
+  <!-- 資産タイル -->
+  <div class="tiles" id="tiles"></div>
+
+  <!-- 資産構成 -->
+  <div class="card">
+    <h2>資産構成</h2>
+    <div class="compbar" id="compbar"></div>
+    <div class="complegend" id="complegend"></div>
+  </div>
+
+  <!-- 資産推移 -->
+  <div class="card">
+    <h2>総資産の推移</h2>
+    <div class="chartbox">
+      <svg id="trend" viewBox="0 0 960 260" role="img" aria-label="総資産の月次推移"></svg>
+      <div class="tooltip" id="tooltip"></div>
+    </div>
+  </div>
+
+  <!-- 金（現物）台帳 -->
+  <div class="card">
+    <div class="cardhead">
+      <h2>金（現物）</h2>
+      <button class="addbtn" data-add="gold">＋ 金を追加</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="psa" id="gold-table">
+        <thead><tr><th>品目</th><th class="num">重量(g)</th><th>取得</th><th class="num">取得価格</th><th class="num">時価</th><th class="num">含み損益</th></tr></thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- 植物コレクション（アガベ・塊根） -->
+  <div class="card">
+    <div class="cardhead">
+      <h2>植物コレクション（アガベ・塊根）</h2>
+      <button class="addbtn" data-add="plant">＋ 株を追加</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="psa" id="plant-table">
+        <thead><tr><th>品種</th><th>需要</th><th>取得</th><th class="num">取得価格</th><th class="num">相場</th><th class="num">含み損益</th><th>メモ</th></tr></thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- 子株価格見積もりツール -->
+  <div class="card">
+    <h2>子株価格 見積もりツール</h2>
+    <p class="calc-lead">大株の相場から子株の適正な出品価格レンジを算出します。落札相場はオークファン等で確認した値を入力してください（ヤフオクの自動取得は規約上行いません）。</p>
+    <div class="calc-grid">
+      <div class="calc-field">
+        <label for="c-parent">大株の相場（円）</label>
+        <input id="c-parent" type="number" inputmode="numeric" value="60000">
+        <div class="hint">親株のヤフオク落札相場・市場価格</div>
+      </div>
+      <div class="calc-field">
+        <label for="c-size">サイズ比率（子株/親株）</label>
+        <input id="c-size" type="number" step="0.05" value="0.30">
+        <div class="hint">株径・葉数の比。0.2〜0.5が目安</div>
+      </div>
+      <div class="calc-field">
+        <label for="c-root">発根状態</label>
+        <select id="c-root">
+          <option value="0.55">未発根（抜き苗）</option>
+          <option value="0.75">発根処理中</option>
+          <option value="1.0" selected>発根済み</option>
+        </select>
+        <div class="hint">発根済みは高く売れる</div>
+      </div>
+      <div class="calc-field">
+        <label for="c-rare">斑・希少度</label>
+        <select id="c-rare">
+          <option value="1.0" selected>並（無地）</option>
+          <option value="1.5">やや希少（爪・締まり良）</option>
+          <option value="2.5">中斑・縞などプレミア</option>
+          <option value="4.0">極上斑・人気個体</option>
+        </select>
+        <div class="hint">斑入りは大幅プレミア</div>
+      </div>
+      <div class="calc-field">
+        <label for="c-season">季節係数</label>
+        <select id="c-season">
+          <option value="1.15">成長期（春〜初夏）</option>
+          <option value="1.0" selected>通常</option>
+          <option value="0.85">休眠期（真冬）</option>
+        </select>
+        <div class="hint">成長期は需要が高い</div>
+      </div>
+      <div class="calc-field">
+        <label for="c-comp">実際の落札例（円・任意）</label>
+        <input id="c-comp" type="text" inputmode="numeric" placeholder="4000, 4500, 3800">
+        <div class="hint">同品種の子株の落札額をカンマ区切りで。計算値と平均して補正</div>
+      </div>
+    </div>
+    <div class="calc-result" id="calc-result"></div>
+  </div>
+
+  <!-- デジタルコレクション -->
+  <div class="card">
+    <div class="cardhead">
+      <h2>デジタルコレクション（Kindle・FANZA・DLsite）</h2>
+      <button class="addbtn" data-add="digital">＋ 作品を追加</button>
+    </div>
+    <div id="digital-summary" class="digsum"></div>
+    <div style="overflow-x:auto">
+      <table class="psa" id="digital-table">
+        <thead><tr><th>ﾌﾟﾗｯﾄﾌｫｰﾑ</th><th>タイトル</th><th>取得</th><th class="num">購入額</th><th>メモ</th></tr></thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+    <div class="dignote">※ 再販不可のライセンスのため総資産には合算しない（累計購入額の記録）</div>
+  </div>
+
+  <!-- サブスクリプション -->
+  <div class="card">
+    <div class="cardhead">
+      <h2>サブスクリプション</h2>
+      <button class="addbtn" data-add="sub">＋ サブスクを追加</button>
+    </div>
+    <div id="sub-summary" class="digsum"></div>
+    <div style="overflow-x:auto">
+      <table class="psa" id="sub-table">
+        <thead><tr><th>サービス</th><th>分類</th><th>周期</th><th class="num">金額</th><th class="num">月額換算</th><th>次回更新</th></tr></thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+    <div class="dignote">※ 固定費（毎月の支出）。総資産には合算しない</div>
+  </div>
+
+  <!-- PSA鑑定カード -->
+  <div class="card">
+    <div class="cardhead">
+      <h2>PSA鑑定カード</h2>
+      <button class="addbtn" data-add="psa">＋ カード追加</button>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="psa" id="psa-table">
+        <thead><tr><th>カード</th><th>グレード</th><th>鑑定番号</th><th>取得</th><th class="num">取得価格</th><th class="num">推定時価</th><th class="num">含み損益</th></tr></thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+    <div class="addnote" id="add-note" style="display:none"></div>
+    <div class="addactions">
+      <span id="data-status" class="gh-status"></span>
+      <button class="linkbtn" id="data-save">💾 GitHubにデータ保存</button>
+      <button class="linkbtn" id="data-reload">⟳ GitHubから再読込</button>
+      <button class="linkbtn" id="export-btn">この端末で追加した分をJSON出力</button>
+      <button class="linkbtn danger" id="reset-btn">端末の追加分をクリア</button>
+    </div>
+  </div>
+
+  <!-- 御朱印コレクション -->
+  <div class="card">
+    <div class="cardhead">
+      <h2>御朱印コレクション</h2>
+      <button class="addbtn" data-add="goshuin">＋ 御朱印を追加</button>
+    </div>
+    <div id="goshuin-summary" class="digsum"></div>
+    <div style="overflow-x:auto">
+      <table class="psa" id="goshuin-table">
+        <thead><tr><th>神社・寺</th><th>地域</th><th>参拝日</th><th>メモ</th></tr></thead>
+        <tbody></tbody>
+        <tfoot></tfoot>
+      </table>
+    </div>
+  </div>
+
+  <!-- ヘルスケア -->
+  <div class="card">
+    <div class="cardhead">
+      <h2>ヘルスケア（身体最適化）</h2>
+      <button class="addbtn" data-add="health">＋ 項目を追加</button>
+    </div>
+    <div id="health"></div>
+  </div>
+
+  <!-- プロジェクト進捗 -->
+  <div class="card">
+    <h2>プロジェクト進捗</h2>
+    <div id="projects"></div>
+  </div>
+
+  <div class="grid-2">
+    <!-- 資格 -->
+    <div class="card">
+      <div class="cardhead">
+        <h2>保有資格</h2>
+        <button class="addbtn" data-add="cert">＋ 資格を追加</button>
+      </div>
+      <ul class="plain" id="certs"></ul>
+    </div>
+    <!-- スキル -->
+    <div class="card">
+      <div class="cardhead">
+        <h2>スキル</h2>
+        <button class="addbtn" data-add="skill">＋ スキルを追加</button>
+      </div>
+      <div id="skills"></div>
+    </div>
+  </div>
+
+  <footer>正本はリポジトリ内の DATA オブジェクト。この端末で追加した分はブラウザに保存され、「JSON出力」で正本へ反映できる — Hayahide</footer>
+</div>
+
+<!-- 追加モーダル -->
+<div class="modal-bg" id="modal-bg">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <h3 id="modal-title"></h3>
+    <div id="modal-fields"></div>
+    <div class="modal-actions">
+      <button class="linkbtn" id="modal-cancel">キャンセル</button>
+      <button class="addbtn" id="modal-save">追加する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ================================================================
+   データ定義（公開安全なサンプル既定値）
+   ★このファイルは公開ホスティング前提のため、実データは書き込まない。
+     実際の資産データは非公開リポジトリの dashboard.json に置き、
+     GitHub同期設定（トークン）を入れた端末でのみ実行時に読み込む。
+   ================================================================ */
+const SAMPLE_DATA = {
+  asOf: "2026-07-06",
+
+  // 資産項目。key はCSSの系列色 --s1〜--s5 に対応
+  // コレクションの value は psaCards の合計 + collectionOther から自動計算される
+  assets: [
+    { name: "現金・預金",   value: 3200000, color: "--s1", note: "普通・定期の合計" },
+    { name: "金（現物）",   value: "auto",  color: "--s2", note: "地金・コインの時価合計" },
+    { name: "土地・不動産", value: 0,       color: "--s3", note: "評価額ベース" },
+    { name: "コレクション", value: "auto",  color: "--s4", note: "PSA鑑定カード＋その他の合計" },
+    { name: "その他",       value: "auto",  color: "--s5", note: "植物コレクション＋機材等の合計" },
+  ],
+
+  // PSA鑑定カード台帳（サンプル — 実際の保有カードに書き換える）
+  // value は直近の相場に基づく推定時価。取得価格を残したい場合は cost を併記
+  // cert はPSA鑑定番号。将来PSA Cert Verification APIと連携する際のキーになる
+  psaCards: [
+    { cert: "00000001", name: "（サンプル）リザードン 25th",  grade: "PSA10", value: 250000, cost: 180000, acquired: "2025-11" },
+    { cert: "00000002", name: "（サンプル）ピカチュウ プロモ", grade: "PSA10", value: 150000, cost: 120000, acquired: "2026-02" },
+    { cert: "00000003", name: "（サンプル）ミュウツーGX",     grade: "PSA10", value: 100000, cost: 95000,  acquired: "2026-05" },
+  ],
+
+  // PSA以外のコレクション（未鑑定カード・BOX等）の推定時価合計
+  collectionOther: 100000,
+
+  // 金（現物）台帳（サンプル — 実際の保有に書き換える）
+  // weight はグラム数（任意）、value は現在の時価、cost は取得価格（任意）
+  goldHoldings: [
+    { name: "（サンプル）地金 100g",   weight: 100, value: 1500000, cost: 900000, acquired: "2024-06" },
+    { name: "（サンプル）金貨 1oz",    weight: 31,  value: 480000,  cost: 350000, acquired: "2025-03" },
+  ],
+
+  // 植物コレクション台帳（アガベ・塊根）（サンプル — 実際の保有に書き換える）
+  // demand は需要ランク（高/中/低）、value は現在の相場（時価）、note は相場メモ
+  plants: [
+    { name: "（サンプル）アガベ チタノタ 白鯨", demand: "高", value: 60000, cost: 25000, acquired: "2025-04", note: "子株2つ確認。発根後に売却検討" },
+    { name: "（サンプル）アガベ オテロイ",     demand: "中", value: 20000, cost: 12000, acquired: "2025-07", note: "" },
+    { name: "（サンプル）パキポディウム グラキリス", demand: "高", value: 40000, cost: 30000, acquired: "2024-11", note: "実生。太りに応じて相場上昇" },
+  ],
+
+  // 植物・PSA以外の「その他」資産（機材等）の合計
+  otherMisc: 150000,
+
+  // デジタルコレクション（Kindle / FANZA / DLsite 等）
+  // 再販不可のライセンスのため総資産には合算しない。price は購入額（累計投資額の記録用）
+  digital: [
+    { platform: "Kindle", title: "（サンプル）技術書まとめ買い", price: 3200, acquired: "2026-03", note: "" },
+    { platform: "FANZA",  title: "（サンプル）同人誌セット",     price: 1500, acquired: "2026-05", note: "" },
+    { platform: "DLsite", title: "（サンプル）音声作品",         price: 1200, acquired: "2026-06", note: "" },
+  ],
+
+  // サブスクリプション（固定費）。cycle は "月" または "年"
+  subscriptions: [
+    { name: "（サンプル）Netflix",       amount: 1590, cycle: "月", category: "動画", next: "2026-08-01" },
+    { name: "（サンプル）Amazon Prime",  amount: 5900, cycle: "年", category: "総合", next: "2026-12-15" },
+    { name: "（サンプル）ChatGPT Plus",  amount: 3000, cycle: "月", category: "AI",   next: "2026-08-10" },
+  ],
+
+  // 日次カウンター（習慣トラッキング）。ボタンで記録するたびに日時を保存する
+  // 記録は端末（localStorage）にイベントログ（タイムスタンプ付き）として保存。
+  // 機微データのため「金額を隠す」で値がぼかされる。
+  // type: "count"=回数のみ / "rated"=★5段階評価付き / "rated2"=量★5+質★5評価 / "mood"=感情値(5段階・遡及なし)
+  counters: [
+    { key: "mood",  name: "Mood", emoji: "🙂", type: "mood",  unit: "" },
+    { key: "water", name: "Water", emoji: "🥤", type: "water", unit: "回" },
+    { key: "meal",  name: "Meal", emoji: "🍽️", type: "rated2", unit: "回", content: true, price: true, place: true, who: true },
+    { key: "toilet", name: "Restroom", emoji: "🚽", type: "rated2", unit: "回", checks: [{ k: "small", label: "小" }, { k: "large", label: "大" }] },
+    { key: "ejac",  name: "Release",  emoji: "💧", type: "rated2", unit: "回", sex: true, memo: true },
+    { key: "ibuprofen", name: "Ibuprofen", emoji: "💊", type: "dose", unit: "回", dose: 150, doseUnit: "mg", reasonDefault: "頭痛", confirm: true },
+    { key: "cepharanthin", name: "セファランチン", emoji: "💊", type: "count", unit: "錠", perDay: 3, sched: "朝・昼・晩", confirm: true },
+    { key: "epinastine", name: "エピナスチン", emoji: "💊", type: "count", unit: "錠", perDay: 1, sched: "晩のみ", confirm: true },
+    { key: "betamethasone", name: "ベタメタゾンローション", emoji: "🧴", type: "count", unit: "回", perDay: 2, sched: "朝・晩", confirm: true },
+    { key: "zinc", name: "亜鉛", emoji: "💊", type: "count", unit: "回", perDay: 1, sched: "1日1回", confirm: true },
+    { key: "dha",  name: "DHA", emoji: "🐟", type: "count", unit: "回", perDay: 2, sched: "1日2回", confirm: true },
+    { key: "smoke", name: "Smoke",  emoji: "🚬", type: "count", unit: "本", goal: "Reduce", confirm: true },
+  ],
+
+  // ヘルスケア（身体最適化）。不調・改善項目を1つずつ進捗管理する
+  // status は「改善中」「経過観察」「良好」、progress は 0〜100
+  health: [
+    { name: "（サンプル）睡眠の質",   status: "改善中",   progress: 40, note: "就寝時間を固定中" },
+    { name: "（サンプル）肩こり",     status: "経過観察", progress: 60, note: "ストレッチ習慣化" },
+    { name: "（サンプル）体重管理",   status: "良好",     progress: 85, note: "目標圏内で維持" },
+  ],
+
+  // 御朱印コレクション（参拝記録）。資産ではなく思い出のログとして管理
+  goshuin: [
+    { name: "（サンプル）明治神宮", area: "東京都", date: "2025-01-03", note: "初詣" },
+    { name: "（サンプル）伏見稲荷大社", area: "京都府", date: "2025-05-04", note: "千本鳥居" },
+  ],
+
+  // 総資産の月次推移（サンプル）。月末時点の合計を記録していく
+  history: [
+    { month: "2026-01", total: 4100000 },
+    { month: "2026-02", total: 4230000 },
+    { month: "2026-03", total: 4180000 },
+    { month: "2026-04", total: 4390000 },
+    { month: "2026-05", total: 4550000 },
+    { month: "2026-06", total: 4700000 },
+    { month: "2026-07", total: 4800000 },
+  ],
+
+  // プロジェクト進捗。progress は 0〜100 の自己評価。ROADMAP.mdと同期させる
+  projects: [
+    { name: "玲（れい）",                priority: "A", status: "運用中（対話蓄積フェーズ）", progress: 70 },
+    { name: "Horse Racing Committee",   priority: "A", status: "開発中",                    progress: 60 },
+    { name: "X自動投稿ボット",           priority: "B", status: "運用中（LLM生成はAPIキー設定待ち）", progress: 85 },
+    { name: "紫電オーガナイザー",        priority: "C", status: "開発中（V1 MVP実装済・実機検証待ち）", progress: 35 },
+    { name: "紫電パレット",              priority: "C", status: "Phase 4 完了・Phase 5 企画中", progress: 80 },
+    { name: "紫電アーカイブ",            priority: "C", status: "計画段階",                  progress: 5 },
+    { name: "PSAマッチングシステム",     priority: "C", status: "調査・データ収集",           progress: 10 },
+    { name: "五十嵐家アーカイブ計画",    priority: "C", status: "構想段階",                  progress: 5 },
+    { name: "資産ダッシュボード",        priority: "C", status: "v1完成・データ入力待ち",     progress: 50 },
+    { name: "FANZAアフィリエイトボット", priority: "C", status: "計画段階",                  progress: 5 },
+    { name: "ExpenseVBA（経費精算）",    priority: "C", status: "開発中",                    progress: 40 },
+    { name: "Shiden-Expense（モバイル版）", priority: "C", status: "開発中",                 progress: 30 },
+    { name: "NFCタグ勤怠管理",           priority: "E", status: "✅ 完了",                   progress: 100 },
+  ],
+
+  // 保有資格（サンプル — 実際の資格に書き換える）
+  certifications: [
+    { name: "普通自動車第一種運転免許", date: "20XX-XX" },
+    { name: "（ここに資格を追加）",     date: "" },
+  ],
+
+  // スキル。level は 1〜5 の自己評価
+  skills: [
+    { group: "開発", items: [
+      { name: "Python", level: 4 },
+      { name: "VBA",    level: 4 },
+      { name: "Excel",  level: 5 },
+      { name: "GitHub Actions", level: 3 },
+    ]},
+    { group: "AI活用", items: [
+      { name: "Claude Code", level: 4 },
+      { name: "プロンプト設計", level: 4 },
+      { name: "マルチAI運用（SA/LE体制）", level: 3 },
+    ]},
+    { group: "ホビー・実務", items: [
+      { name: "模型塗装", level: 4 },
+      { name: "3Dプリンター", level: 3 },
+      { name: "アガベ栽培", level: 4 },
+    ]},
+  ],
+};
+
+// 実データ（非公開リポジトリの dashboard.json）を読み込むまではサンプルを表示
+let DATA = SAMPLE_DATA;
+
+/* ================================================================
+   描画処理 — DATA を読んでDOMを構築する。編集不要。
+   ================================================================ */
+const yen = n => "¥" + n.toLocaleString("ja-JP");
+const fmtDelta = d => `<span class="${d >= 0 ? "gain" : "loss"}">${d >= 0 ? "+" : "−"}${Math.abs(d).toLocaleString("ja-JP")}</span>`;
+
+/* ----------------------------------------------------------------
+   端末側の追加分（localStorage）
+   正本はリポジトリ内の DATA。この端末で追加した分だけを別枠で保存し、
+   読み込み時に DATA へマージする。JSON出力で正本へ反映できる。
+   ---------------------------------------------------------------- */
+const LS_KEY = "mtworks_dashboard_additions_v1";
+function emptyAdd() { return { psaCards: [], goldHoldings: [], plants: [], digital: [], subscriptions: [], health: [], goshuin: [], certifications: [], skills: [] }; }
+function loadAdd() {
+  try { return Object.assign(emptyAdd(), JSON.parse(localStorage.getItem(LS_KEY)) || {}); }
+  catch (e) { return emptyAdd(); }
+}
+function saveAdd(a) { localStorage.setItem(LS_KEY, JSON.stringify(a)); }
+const added = loadAdd();
+
+// マージ後の台帳（DATA正本 ＋ 端末追加分）
+function psaLedger()   { return DATA.psaCards.concat(added.psaCards); }
+function goldLedger()  { return DATA.goldHoldings.concat(added.goldHoldings); }
+function plantLedger()   { return DATA.plants.concat(added.plants); }
+function digitalLedger() { return DATA.digital.concat(added.digital); }
+function goshuinLedger() { return DATA.goshuin.concat(added.goshuin); }
+function subLedger()     { return DATA.subscriptions.concat(added.subscriptions); }
+
+// 更新日
+document.getElementById("asof").textContent = "更新日: " + DATA.asOf;
+
+// 総資産・タイル・構成バーを（再）描画する
+function renderAssets() {
+  const psaTotal   = psaLedger().reduce((s, c) => s + c.value, 0);
+  const goldTotal  = goldLedger().reduce((s, g) => s + g.value, 0);
+  const plantTotal = plantLedger().reduce((s, p) => s + p.value, 0);
+  // auto項目を解決したビュー用配列を作る（DATA.assets自体は書き換えない）
+  const autoVal = name => {
+    if (name.startsWith("金"))       return goldTotal;
+    if (name.startsWith("コレク")) return psaTotal + DATA.collectionOther;
+    if (name.startsWith("その他")) return plantTotal + DATA.otherMisc;
+    return 0;
+  };
+  const assets = DATA.assets.map(a => ({ ...a, resolved: a.value === "auto" ? autoVal(a.name) : a.value }));
+  const total = assets.reduce((s, a) => s + a.resolved, 0);
+
+  document.getElementById("hero-value").innerHTML = yen(total);
+  const h = DATA.history;
+  if (h.length >= 2) {
+    const prev = h[h.length - 2].total;
+    const diff = total - prev;
+    const pct = (diff / prev * 100).toFixed(1);
+    const el = document.getElementById("hero-delta");
+    el.textContent = (diff >= 0 ? "▲ +" : "▼ ") + yen(Math.abs(diff)).slice(1) + "円（前月比 " + (diff >= 0 ? "+" : "") + pct + "%）";
+    el.classList.toggle("down", diff < 0);
+  }
+
+  document.getElementById("tiles").innerHTML = assets.map(a => `
+    <div class="tile">
+      <div class="label"><span class="dot" style="background:var(${a.color})"></span>${a.name}</div>
+      <div class="value">${yen(a.resolved)}</div>
+      <div class="note">${a.note}</div>
+    </div>`).join("");
+
+  const nonzero = assets.filter(a => a.resolved > 0);
+  document.getElementById("compbar").innerHTML = nonzero.map(a =>
+    `<div style="flex:${a.resolved};background:var(${a.color})" title="${a.name} ${yen(a.resolved)}"></div>`).join("");
+  document.getElementById("complegend").innerHTML = assets.map(a => {
+    const pct = total > 0 ? (a.resolved / total * 100).toFixed(1) : "0.0";
+    return `<span class="item"><span class="sw" style="background:var(${a.color})"></span>${a.name} <b>${pct}%</b>（<span class="legend-money">${yen(a.resolved)}</span>）</span>`;
+  }).join("");
+}
+
+// 推移チャート（SVG折れ線 + ホバー十字線ツールチップ）
+function drawTrend() {
+  const svg = document.getElementById("trend");
+  const W = 960, H = 260, padL = 70, padR = 20, padT = 16, padB = 34;
+  const pts = DATA.history;
+  if (pts.length < 2) return;
+
+  const vals = pts.map(p => p.total);
+  const vMin = Math.min(...vals), vMax = Math.max(...vals);
+  const span = (vMax - vMin) || 1;
+  const lo = vMin - span * 0.15, hi = vMax + span * 0.15;
+
+  const x = i => padL + (W - padL - padR) * i / (pts.length - 1);
+  const y = v => padT + (H - padT - padB) * (1 - (v - lo) / (hi - lo));
+
+  let out = "";
+  // グラデーション定義（面塗り用）
+  out += `<defs><linearGradient id="areaFill" x1="0" y1="0" x2="0" y2="1">
+    <stop offset="0%" stop-color="#9085e9" stop-opacity="0.25"/>
+    <stop offset="100%" stop-color="#9085e9" stop-opacity="0"/>
+  </linearGradient></defs>`;
+  // 横グリッド線＋Y軸ラベル（万円単位）
+  const steps = 4;
+  for (let s = 0; s <= steps; s++) {
+    const v = lo + (hi - lo) * s / steps;
+    const yy = y(v);
+    out += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="var(--grid)" stroke-width="1"/>`;
+    out += `<text x="${padL - 8}" y="${yy + 4}" text-anchor="end" font-size="11" fill="var(--muted)">${Math.round(v / 10000)}万</text>`;
+  }
+  // X軸ラベル
+  pts.forEach((p, i) => {
+    out += `<text x="${x(i)}" y="${H - 10}" text-anchor="middle" font-size="11" fill="var(--muted)">${p.month.slice(5)}月</text>`;
+  });
+  // 面（グラデーション塗り）
+  const line = pts.map((p, i) => `${x(i)},${y(p.total)}`).join(" ");
+  out += `<polygon points="${padL},${y(lo)} ${line} ${x(pts.length - 1)},${y(lo)}" fill="url(#areaFill)"/>`;
+  // 折れ線（2px・紫）
+  out += `<polyline points="${line}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`;
+  // 最新値の直接ラベル＋マーカー
+  const li = pts.length - 1;
+  out += `<circle cx="${x(li)}" cy="${y(pts[li].total)}" r="4.5" fill="var(--accent-hi)" stroke="var(--surface)" stroke-width="2"/>`;
+  out += `<text x="${x(li) - 6}" y="${y(pts[li].total) - 12}" text-anchor="end" font-size="12" font-weight="700" fill="var(--ink)">${yen(pts[li].total)}</text>`;
+  // 十字線（ホバーで表示）
+  out += `<line id="xhair" x1="0" y1="${padT}" x2="0" y2="${H - padB}" stroke="var(--baseline)" stroke-width="1" visibility="hidden"/>`;
+  out += `<circle id="xdot" r="4" fill="var(--accent-hi)" stroke="var(--surface)" stroke-width="2" visibility="hidden"/>`;
+  svg.innerHTML = out;
+
+  // ホバー処理
+  const tip = document.getElementById("tooltip");
+  const box = svg.parentElement;
+  svg.addEventListener("mousemove", ev => {
+    const r = svg.getBoundingClientRect();
+    const mx = (ev.clientX - r.left) / r.width * W;
+    let i = Math.round((mx - padL) / ((W - padL - padR) / (pts.length - 1)));
+    i = Math.max(0, Math.min(pts.length - 1, i));
+    const xh = document.getElementById("xhair"), xd = document.getElementById("xdot");
+    xh.setAttribute("x1", x(i)); xh.setAttribute("x2", x(i)); xh.setAttribute("visibility", "visible");
+    xd.setAttribute("cx", x(i)); xd.setAttribute("cy", y(pts[i].total)); xd.setAttribute("visibility", "visible");
+    tip.style.display = "block";
+    tip.innerHTML = `<div class="t-date">${pts[i].month}</div><div class="t-val">${yen(pts[i].total)}</div>`;
+    const bx = box.getBoundingClientRect();
+    const px = x(i) / W * r.width;
+    tip.style.left = Math.min(px + 14, bx.width - tip.offsetWidth - 4) + "px";
+    tip.style.top = (y(pts[i].total) / H * r.height - 20) + "px";
+  });
+  svg.addEventListener("mouseleave", () => {
+    tip.style.display = "none";
+    document.getElementById("xhair").setAttribute("visibility", "hidden");
+    document.getElementById("xdot").setAttribute("visibility", "hidden");
+  });
+}
+
+// PSA鑑定カード台帳（含み損益 = 時価 − 取得価格）
+function renderPsa() {
+  const rows = psaLedger();
+  const tbody = document.querySelector("#psa-table tbody");
+  const tfoot = document.querySelector("#psa-table tfoot");
+  tbody.innerHTML = rows.map(c => `
+    <tr>
+      <td>${c.name}</td>
+      <td><span class="grade">${c.grade}</span></td>
+      <td class="dim">${c.cert || "—"}</td>
+      <td class="dim">${c.acquired || ""}</td>
+      <td class="num dim">${c.cost ? yen(c.cost) : "—"}</td>
+      <td class="num">${yen(c.value)}</td>
+      <td class="num">${c.cost ? fmtDelta(c.value - c.cost) : "—"}</td>
+    </tr>`).join("");
+  const valTotal = rows.reduce((s, c) => s + c.value, 0);
+  const costTotal = rows.reduce((s, c) => s + (c.cost || 0), 0);
+  tfoot.innerHTML = `
+    <tr>
+      <td>合計（${rows.length}枚）</td><td></td><td></td><td></td>
+      <td class="num dim">${yen(costTotal)}</td>
+      <td class="num">${yen(valTotal)}</td>
+      <td class="num">${fmtDelta(valTotal - costTotal)}</td>
+    </tr>`;
+}
+
+// 金（現物）台帳
+function renderGold() {
+  const rows = goldLedger();
+  const tbody = document.querySelector("#gold-table tbody");
+  const tfoot = document.querySelector("#gold-table tfoot");
+  tbody.innerHTML = rows.map(g => `
+    <tr>
+      <td>${g.name}</td>
+      <td class="num dim">${g.weight ? g.weight.toLocaleString("ja-JP") : "—"}</td>
+      <td class="dim">${g.acquired || ""}</td>
+      <td class="num dim">${g.cost ? yen(g.cost) : "—"}</td>
+      <td class="num">${yen(g.value)}</td>
+      <td class="num">${g.cost ? fmtDelta(g.value - g.cost) : "—"}</td>
+    </tr>`).join("");
+  const valTotal = rows.reduce((s, g) => s + g.value, 0);
+  const costTotal = rows.reduce((s, g) => s + (g.cost || 0), 0);
+  const wTotal = rows.reduce((s, g) => s + (g.weight || 0), 0);
+  tfoot.innerHTML = `
+    <tr>
+      <td>合計（${rows.length}点）</td>
+      <td class="num dim">${wTotal.toLocaleString("ja-JP")}</td><td></td>
+      <td class="num dim">${yen(costTotal)}</td>
+      <td class="num">${yen(valTotal)}</td>
+      <td class="num">${fmtDelta(valTotal - costTotal)}</td>
+    </tr>`;
+}
+
+// 植物コレクション台帳（需要ランク＋相場メモ）
+function renderPlants() {
+  const rows = plantLedger();
+  const dCls = d => d === "高" ? "hi" : d === "低" ? "lo" : "mid";
+  const tbody = document.querySelector("#plant-table tbody");
+  const tfoot = document.querySelector("#plant-table tfoot");
+  tbody.innerHTML = rows.map(p => `
+    <tr>
+      <td>${p.name}</td>
+      <td>${p.demand ? `<span class="demand ${dCls(p.demand)}">${p.demand}</span>` : "—"}</td>
+      <td class="dim">${p.acquired || ""}</td>
+      <td class="num dim">${p.cost ? yen(p.cost) : "—"}</td>
+      <td class="num">${yen(p.value)}</td>
+      <td class="num">${p.cost ? fmtDelta(p.value - p.cost) : "—"}</td>
+      <td class="memo">${p.note || ""}</td>
+    </tr>`).join("");
+  const valTotal = rows.reduce((s, p) => s + p.value, 0);
+  const costTotal = rows.reduce((s, p) => s + (p.cost || 0), 0);
+  tfoot.innerHTML = `
+    <tr>
+      <td>合計（${rows.length}株）</td><td></td><td></td>
+      <td class="num dim">${yen(costTotal)}</td>
+      <td class="num">${yen(valTotal)}</td>
+      <td class="num">${fmtDelta(valTotal - costTotal)}</td>
+      <td></td>
+    </tr>`;
+}
+
+// デジタルコレクション（Kindle・FANZA・DLsite）— 総資産には合算しない
+function renderDigital() {
+  const rows = digitalLedger();
+  const platCls = p => ({ Kindle: "kindle", FANZA: "fanza", DLsite: "dlsite" }[p] || "");
+  // プラットフォーム別サマリー
+  const byPlat = {};
+  rows.forEach(d => {
+    const k = d.platform || "その他";
+    byPlat[k] = byPlat[k] || { count: 0, spend: 0 };
+    byPlat[k].count++; byPlat[k].spend += (d.price || 0);
+  });
+  document.getElementById("digital-summary").innerHTML = Object.entries(byPlat).map(([p, s]) => `
+    <div class="box">
+      <div class="p"><span class="plat ${platCls(p)}">${p}</span></div>
+      <div class="v">${yen(s.spend)}</div>
+      <div class="c">${s.count}作品</div>
+    </div>`).join("");
+  // 明細
+  const tbody = document.querySelector("#digital-table tbody");
+  const tfoot = document.querySelector("#digital-table tfoot");
+  tbody.innerHTML = rows.map(d => `
+    <tr>
+      <td><span class="plat ${platCls(d.platform)}">${d.platform || "—"}</span></td>
+      <td>${d.title}</td>
+      <td class="dim">${d.acquired || ""}</td>
+      <td class="num dim">${d.price ? yen(d.price) : "—"}</td>
+      <td class="memo">${d.note || ""}</td>
+    </tr>`).join("");
+  const spendTotal = rows.reduce((s, d) => s + (d.price || 0), 0);
+  tfoot.innerHTML = `
+    <tr>
+      <td></td><td>合計（${rows.length}作品）</td><td></td>
+      <td class="num dim">${yen(spendTotal)}</td><td></td>
+    </tr>`;
+}
+
+// サブスクリプション（固定費）— 月額換算で集計。総資産には合算しない
+function renderSubs() {
+  const rows = subLedger();
+  const monthly = s => s.cycle === "年" ? (s.amount || 0) / 12 : (s.amount || 0);
+  const monTotal = rows.reduce((sum, s) => sum + monthly(s), 0);
+  const yrTotal = monTotal * 12;
+  document.getElementById("sub-summary").innerHTML = `
+    <div class="box"><div class="p">月額合計</div><div class="v">${yen(Math.round(monTotal))}</div><div class="c">${rows.length}件</div></div>
+    <div class="box"><div class="p">年額換算</div><div class="v">${yen(Math.round(yrTotal))}</div><div class="c">/年</div></div>`;
+  const tbody = document.querySelector("#sub-table tbody");
+  const tfoot = document.querySelector("#sub-table tfoot");
+  // 次回更新日の近い順
+  const sorted = rows.slice().sort((a, b) => (a.next || "9999").localeCompare(b.next || "9999"));
+  tbody.innerHTML = sorted.map(s => `
+    <tr>
+      <td>${s.name}</td>
+      <td class="dim">${s.category || "—"}</td>
+      <td class="dim">${s.cycle || "月"}額</td>
+      <td class="num">${yen(s.amount || 0)}</td>
+      <td class="num dim">${yen(Math.round(monthly(s)))}</td>
+      <td class="dim">${s.next || ""}</td>
+    </tr>`).join("");
+  tfoot.innerHTML = `
+    <tr><td>合計（${rows.length}件）</td><td></td><td></td><td></td>
+      <td class="num">${yen(Math.round(monTotal))}/月</td><td></td></tr>`;
+}
+
+// 御朱印コレクション（参拝記録）— 資産ではなくログ
+function renderGoshuin() {
+  const rows = goshuinLedger();
+  const areas = new Set(rows.map(g => g.area).filter(Boolean));
+  document.getElementById("goshuin-summary").innerHTML = `
+    <div class="box"><div class="p">御朱印数</div><div class="v">${rows.length}</div><div class="c">社・寺</div></div>
+    <div class="box"><div class="p">都道府県</div><div class="v">${areas.size}</div><div class="c">エリア</div></div>`;
+  const tbody = document.querySelector("#goshuin-table tbody");
+  const tfoot = document.querySelector("#goshuin-table tfoot");
+  // 参拝日の新しい順に並べる（日付が無いものは末尾）
+  const sorted = rows.slice().sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  tbody.innerHTML = sorted.map(g => `
+    <tr>
+      <td>${g.name}</td>
+      <td class="dim">${g.area || "—"}</td>
+      <td class="dim">${g.date || ""}</td>
+      <td class="memo">${g.note || ""}</td>
+    </tr>`).join("");
+  tfoot.innerHTML = `<tr><td>合計（${rows.length}）</td><td></td><td></td><td></td></tr>`;
+}
+
+// ヘルスケア（身体最適化）— 改善中を上に、進捗の低い順（手当てが必要な順）
+function renderHealth() {
+  const rows = healthLedger();
+  const cls = s => s === "良好" ? "good" : s === "経過観察" ? "watch" : "work";
+  const rank = s => s === "改善中" ? 0 : s === "経過観察" ? 1 : 2;
+  const sorted = rows.slice().sort((a, b) =>
+    rank(a.status) - rank(b.status) || (a.progress || 0) - (b.progress || 0));
+  document.getElementById("health").innerHTML = sorted.map(h => `
+    <div class="proj">
+      <div class="top">
+        <span class="hstatus ${cls(h.status)}">${h.status || "改善中"}</span>
+        <span class="name">${h.name}</span>
+        <span class="pct">${h.progress || 0}%</span>
+        <span class="memo-inline">${h.note || ""}</span>
+      </div>
+      <div class="pbar"><div class="fill" style="width:${h.progress || 0}%"></div></div>
+    </div>`).join("");
+}
+function healthLedger() { return DATA.health.concat(added.health); }
+
+// プロジェクト進捗（出来高＝progress降順、同率は優先度A→Eで安定ソート）
+const prioRank = { A: 0, B: 1, C: 2, D: 3, E: 4 };
+function renderProjects() {
+  const sorted = DATA.projects.slice().sort((a, b) =>
+    b.progress - a.progress || (prioRank[a.priority] ?? 9) - (prioRank[b.priority] ?? 9));
+  document.getElementById("projects").innerHTML = sorted.map(p => `
+    <div class="proj">
+      <div class="top">
+        <span class="badge${p.priority === "A" ? " pA" : ""}">${p.priority}</span>
+        <span class="name">${p.name}</span>
+        <span class="pct">${p.progress}%</span>
+        <span class="status">${p.status}</span>
+      </div>
+      <div class="pbar"><div class="fill" style="width:${p.progress}%"></div></div>
+    </div>`).join("");
+}
+
+// 資格（DATA正本 ＋ 端末追加分）
+function renderCerts() {
+  const rows = DATA.certifications.concat(added.certifications);
+  document.getElementById("certs").innerHTML = rows.map(c =>
+    `<li class="cert"><span>${c.name}</span><span class="date">${c.date || ""}</span></li>`).join("");
+}
+
+// スキル（レベルは ★ で表示）。追加分は同名グループへ合流、無ければ新グループを作る
+function renderSkills() {
+  const groups = DATA.skills.map(g => ({ group: g.group, items: g.items.slice() }));
+  added.skills.forEach(s => {
+    let g = groups.find(x => x.group === s.group);
+    if (!g) { g = { group: s.group || "その他", items: [] }; groups.push(g); }
+    g.items.push({ name: s.name, level: s.level });
+  });
+  document.getElementById("skills").innerHTML = groups.map(g => `
+    <div class="skillgroup">
+      <div class="gname">${g.group}</div>
+      <div class="chips">${g.items.map(s =>
+        `<span class="chip">${s.name}<span class="lv">${"★".repeat(Math.max(1, Math.min(5, s.level || 1)))}</span></span>`).join("")}</div>
+    </div>`).join("");
+}
+
+/* ================================================================
+   資産の追加（モーダル）・JSON出力・クリア
+   ================================================================ */
+// 各種類のフォーム定義。key=DATAのフィールド名, req=必須, num=数値
+const FORMS = {
+  psa: {
+    title: "PSA鑑定カードを追加", target: "psaCards",
+    fields: [
+      { key: "name",  label: "カード名",   req: true },
+      { key: "grade", label: "グレード",   placeholder: "PSA10", def: "PSA10" },
+      { key: "cert",  label: "鑑定番号",   hint: "スラブに印字された番号（任意）" },
+      { key: "value", label: "推定時価（円）", req: true, num: true },
+      { key: "cost",  label: "取得価格（円）", num: true, hint: "任意" },
+      { key: "acquired", label: "取得年月", placeholder: "2026-07", hint: "任意" },
+    ],
+  },
+  gold: {
+    title: "金（現物）を追加", target: "goldHoldings",
+    fields: [
+      { key: "name",   label: "品目",      req: true, placeholder: "地金 100g" },
+      { key: "weight", label: "重量（g）", num: true, hint: "任意" },
+      { key: "value",  label: "時価（円）", req: true, num: true },
+      { key: "cost",   label: "取得価格（円）", num: true, hint: "任意" },
+      { key: "acquired", label: "取得年月", placeholder: "2026-07", hint: "任意" },
+    ],
+  },
+  plant: {
+    title: "植物（アガベ・塊根）を追加", target: "plants",
+    fields: [
+      { key: "name",   label: "品種名",    req: true, placeholder: "アガベ チタノタ 白鯨" },
+      { key: "demand", label: "需要（高/中/低）", placeholder: "高", def: "中", hint: "高・中・低のいずれか" },
+      { key: "value",  label: "相場・時価（円）", req: true, num: true },
+      { key: "cost",   label: "取得価格（円）", num: true, hint: "任意" },
+      { key: "acquired", label: "取得年月", placeholder: "2026-07", hint: "任意" },
+      { key: "note",   label: "相場メモ", hint: "子株の有無・売却検討など（任意）" },
+    ],
+  },
+  digital: {
+    title: "デジタル作品を追加", target: "digital",
+    fields: [
+      { key: "platform", label: "プラットフォーム", req: true, def: "Kindle", hint: "Kindle / FANZA / DLsite など" },
+      { key: "title",    label: "タイトル", req: true },
+      { key: "price",    label: "購入額（円）", num: true, hint: "任意" },
+      { key: "acquired", label: "取得年月", placeholder: "2026-07", hint: "任意" },
+      { key: "note",     label: "メモ", hint: "任意" },
+    ],
+  },
+  health: {
+    title: "ヘルスケア項目を追加", target: "health",
+    fields: [
+      { key: "name",     label: "項目・不調", req: true, placeholder: "睡眠の質" },
+      { key: "status",   label: "状態", def: "改善中", hint: "改善中 / 経過観察 / 良好" },
+      { key: "progress", label: "進捗（0〜100）", num: true, def: "30" },
+      { key: "note",     label: "メモ・対策", hint: "任意" },
+    ],
+  },
+  sub: {
+    title: "サブスクリプションを追加", target: "subscriptions",
+    fields: [
+      { key: "name",     label: "サービス名", req: true, placeholder: "Netflix" },
+      { key: "amount",   label: "金額（円）", req: true, num: true },
+      { key: "cycle",    label: "周期（月/年）", def: "月", hint: "月 または 年" },
+      { key: "category", label: "分類", placeholder: "動画", hint: "任意" },
+      { key: "next",     label: "次回更新日", placeholder: "2026-08-01", hint: "任意" },
+    ],
+  },
+  goshuin: {
+    title: "御朱印を追加", target: "goshuin",
+    fields: [
+      { key: "name", label: "神社・寺の名前", req: true, placeholder: "明治神宮" },
+      { key: "area", label: "地域（都道府県）", placeholder: "東京都", hint: "任意" },
+      { key: "date", label: "参拝日", placeholder: "2026-07-12", hint: "任意" },
+      { key: "note", label: "メモ", hint: "任意" },
+    ],
+  },
+  cert: {
+    title: "資格を追加", target: "certifications",
+    fields: [
+      { key: "name", label: "資格名", req: true, placeholder: "基本情報技術者" },
+      { key: "date", label: "取得年月", placeholder: "2026-07", hint: "任意" },
+    ],
+  },
+  skill: {
+    title: "スキルを追加", target: "skills",
+    fields: [
+      { key: "group", label: "分類", req: true, placeholder: "開発", hint: "既存の分類名と揃えると同じ枠にまとまる" },
+      { key: "name",  label: "スキル名", req: true, placeholder: "TypeScript" },
+      { key: "level", label: "レベル（1〜5）", req: true, num: true, def: "3" },
+    ],
+  },
+};
+
+const modalBg = document.getElementById("modal-bg");
+let activeForm = null;
+
+function openModal(kind) {
+  activeForm = FORMS[kind];
+  document.getElementById("modal-title").textContent = activeForm.title;
+  document.getElementById("modal-fields").innerHTML = activeForm.fields.map(f => `
+    <div class="field">
+      <label for="fld-${f.key}">${f.label}${f.req ? " *" : ""}</label>
+      <input id="fld-${f.key}" type="${f.num ? "number" : "text"}"
+             value="${f.def || ""}" placeholder="${f.placeholder || ""}"
+             inputmode="${f.num ? "numeric" : "text"}">
+      ${f.hint ? `<div class="hint">${f.hint}</div>` : ""}
+    </div>`).join("");
+  modalBg.classList.add("open");
+  const first = document.getElementById("fld-" + activeForm.fields[0].key);
+  if (first) first.focus();
+}
+function closeModal() { modalBg.classList.remove("open"); activeForm = null; }
+
+function saveModal() {
+  if (!activeForm) return;
+  const obj = {};
+  for (const f of activeForm.fields) {
+    const raw = document.getElementById("fld-" + f.key).value.trim();
+    if (f.req && !raw) { alert(f.label + "は必須です。"); return; }
+    if (!raw) continue;
+    obj[f.key] = f.num ? Number(raw.replace(/,/g, "")) : raw;
+  }
+  added[activeForm.target].push(obj);
+  saveAdd(added);
+  closeModal();
+  renderAll();
+}
+
+// 端末追加分をJSON（DATAへ貼り付けやすい形）で出力
+function exportAdditions() {
+  const note = document.getElementById("add-note");
+  const has = added.psaCards.length || added.goldHoldings.length || added.plants.length
+    || added.digital.length || added.subscriptions.length || added.health.length || added.goshuin.length
+    || added.certifications.length || added.skills.length;
+  if (!has) {
+    note.style.display = "block";
+    note.innerHTML = "この端末で追加した分はまだありません。";
+    return;
+  }
+  const fmt = arr => arr.map(o => "    " + JSON.stringify(o)
+    .replace(/"([^"]+)":/g, "$1: ").replace(/,/g, ", ")).join(",\n");
+  let out = "";
+  if (added.psaCards.length)     out += "// psaCards に追記:\n" + fmt(added.psaCards) + "\n\n";
+  if (added.goldHoldings.length) out += "// goldHoldings に追記:\n" + fmt(added.goldHoldings) + "\n\n";
+  if (added.plants.length)         out += "// plants に追記:\n" + fmt(added.plants) + "\n\n";
+  if (added.digital.length)        out += "// digital に追記:\n" + fmt(added.digital) + "\n\n";
+  if (added.subscriptions.length)  out += "// subscriptions に追記:\n" + fmt(added.subscriptions) + "\n\n";
+  if (added.health.length)         out += "// health に追記:\n" + fmt(added.health) + "\n\n";
+  if (added.goshuin.length)        out += "// goshuin に追記:\n" + fmt(added.goshuin) + "\n\n";
+  if (added.certifications.length) out += "// certifications に追記:\n" + fmt(added.certifications) + "\n\n";
+  if (added.skills.length)         out += "// skills（各分類の items へ）:\n" + fmt(added.skills);
+  note.style.display = "block";
+  note.innerHTML = "以下をリポジトリの <code>dashboard/index.html</code> の該当配列に貼り付けると正本へ反映されます。反映後は「端末の追加分をクリア」で二重計上を防いでください。" +
+    `<textarea readonly onclick="this.select()">${out}</textarea>`;
+}
+
+function resetAdditions() {
+  if (!confirm("この端末で追加した分をすべて削除します。正本（リポジトリ）には影響しません。よろしいですか？")) return;
+  added.psaCards = []; added.goldHoldings = []; added.plants = []; added.digital = [];
+  added.subscriptions = []; added.health = []; added.goshuin = []; added.certifications = []; added.skills = [];
+  saveAdd(added);
+  document.getElementById("add-note").style.display = "none";
+  renderAll();
+}
+
+// イベント配線
+document.querySelectorAll(".addbtn[data-add]").forEach(b =>
+  b.addEventListener("click", () => openModal(b.dataset.add)));
+document.getElementById("modal-cancel").addEventListener("click", closeModal);
+document.getElementById("modal-save").addEventListener("click", saveModal);
+modalBg.addEventListener("click", e => { if (e.target === modalBg) closeModal(); });
+document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
+document.getElementById("export-btn").addEventListener("click", exportAdditions);
+document.getElementById("reset-btn").addEventListener("click", resetAdditions);
+
+/* ================================================================
+   子株価格 見積もりツール
+   子株価格 ≒ 大株相場 × サイズ比率 × 発根係数 × 斑・希少度係数 × 季節係数
+   実際の落札例があれば計算値と平均して補正する
+   ================================================================ */
+(function pupCalculator() {
+  const ids = ["c-parent", "c-size", "c-root", "c-rare", "c-season", "c-comp"];
+  const el = id => document.getElementById(id);
+  const result = document.getElementById("calc-result");
+
+  function calc() {
+    const parent = Number(el("c-parent").value) || 0;
+    const size   = Number(el("c-size").value) || 0;
+    const root   = Number(el("c-root").value) || 1;
+    const rare   = Number(el("c-rare").value) || 1;
+    const season = Number(el("c-season").value) || 1;
+
+    // 基準見積もり
+    let base = parent * size * root * rare * season;
+
+    // 実際の落札例があれば平均して補正（計算値と実勢を50:50でブレンド）
+    const comps = el("c-comp").value.split(/[,、\s]+/).map(s => Number(s.replace(/[^\d.]/g, "")))
+      .filter(n => n > 0);
+    let note = "";
+    if (comps.length) {
+      const avg = comps.reduce((s, n) => s + n, 0) / comps.length;
+      const blended = base * 0.5 + avg * 0.5;
+      note = `落札例 ${comps.length}件（平均 ${yen(Math.round(avg))}）で補正済み`;
+      base = blended;
+    }
+
+    if (!base) { result.innerHTML = `<div class="rlabel">大株の相場を入力してください</div>`; return; }
+
+    // ±15%のレンジで提示
+    const lo = Math.round(base * 0.85 / 100) * 100;
+    const hi = Math.round(base * 1.15 / 100) * 100;
+    const mid = Math.round(base / 100) * 100;
+    result.innerHTML = `
+      <div class="rlabel">推奨出品価格レンジ</div>
+      <div class="rrange">${yen(lo)} 〜 ${yen(hi)}</div>
+      <div class="rmid">中心値 ${yen(mid)}</div>
+      ${note ? `<div class="rnote">${note}</div>` : ""}`;
+  }
+
+  ids.forEach(id => { const e = el(id); if (e) e.addEventListener("input", calc); });
+  calc();
+})();
+
+/* ================================================================
+   金額プライバシートグル（職場PCなどで金額をぼかす）
+   状態はブラウザに記憶するので、一度隠せばその端末では隠れたまま
+   ================================================================ */
+(function privacyToggle() {
+  const KEY = "mtworks_hide_money";
+  const btn = document.getElementById("privacy-toggle");
+  function apply(hidden) {
+    document.body.classList.toggle("hide-money", hidden);
+    btn.textContent = hidden ? "🙈 金額を表示" : "👁 金額を隠す";
+  }
+  let hidden = localStorage.getItem(KEY) === "1";
+  apply(hidden);
+  btn.addEventListener("click", () => {
+    hidden = !hidden;
+    localStorage.setItem(KEY, hidden ? "1" : "0");
+    apply(hidden);
+  });
+})();
+
+/* ================================================================
+   日次カウンター（習慣トラッキング）
+   端末のlocalStorageに日付ごとの回数を記録する。機微データのため
+   「金額を隠す」トグルで値がぼかされる（.counter-val / .counter-stats）
+   ================================================================ */
+(function dailyCounters() {
+  const KEY = "mtworks_events_v1"; // { key: [ {ts, rating?}, ... ] }
+  const box = document.getElementById("counters");
+  if (!box) return;
+
+  const DEL_KEY = "mtworks_events_deleted_v1";
+  function all() { try { return JSON.parse(localStorage.getItem(KEY)) || {}; } catch (e) { return {}; } }
+  function save(d) { localStorage.setItem(KEY, JSON.stringify(d)); }
+  function events(key) { return all()[key] || []; }
+  function deleted() { try { return JSON.parse(localStorage.getItem(DEL_KEY)) || []; } catch (e) { return []; } }
+  function saveDeleted(a) { localStorage.setItem(DEL_KEY, JSON.stringify(a)); }
+  function newId() { return (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : "e" + Date.now() + Math.random().toString(36).slice(2); }
+
+  function dstr(d) { return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+  function isSameDay(ts) { return dstr(new Date(ts)) === dstr(new Date()); }
+  function sinceDays(n) { const d = new Date(); d.setDate(d.getDate() - n + 1); d.setHours(0, 0, 0, 0); return d.getTime(); }
+  function countDays(key, n) { const from = sinceDays(n); return events(key).filter(e => new Date(e.ts).getTime() >= from).length; }
+  function todayEvents(key) { return events(key).filter(e => isSameDay(e.ts)); }
+  function fmtTime(ts) { const d = new Date(ts); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
+  function avgRating(key, n, field) {
+    field = field || "rating"; // rated2では "amount" / "quality" を集計する
+    const from = sinceDays(n);
+    const rs = events(key).filter(e => new Date(e.ts).getTime() >= from && e[field]).map(e => e[field]);
+    return rs.length ? (rs.reduce((s, r) => s + r, 0) / rs.length) : 0;
+  }
+  function todayMood(key) {
+    const ms = todayEvents(key).filter(e => e.mood).map(e => e.mood);
+    return ms.length ? ms[ms.length - 1] : 0; // 今日の最新
+  }
+
+  const MOODS = [{ v: 1, e: "😣" }, { v: 2, e: "😕" }, { v: 3, e: "😐" }, { v: 4, e: "🙂" }, { v: 5, e: "😄" }];
+
+  /* ---- 推移表示用の集計・チャート（ダッシュボードは記録せず表示のみ） ---- */
+  const TREND_DAYS = 30;
+  // 直近n日の日付配列（古い→新しい）
+  function lastNDates(n) {
+    const base = new Date(); base.setHours(0, 0, 0, 0);
+    const arr = [];
+    for (let i = n - 1; i >= 0; i--) { const d = new Date(base); d.setDate(d.getDate() - i); arr.push(d); }
+    return arr;
+  }
+  // 日ごとの記録件数
+  function dailyCounts(key, n) {
+    const m = {}; events(key).forEach(e => { const k = dstr(new Date(e.ts)); m[k] = (m[k] || 0) + 1; });
+    return lastNDates(n).map(d => ({ date: d, v: m[dstr(d)] || 0 }));
+  }
+  // 日ごとの平均（amount / quality / rating 等）。記録のない日は null
+  function dailyAvg(key, n, field) {
+    const acc = {};
+    events(key).forEach(e => { if (e[field]) { const k = dstr(new Date(e.ts)); (acc[k] = acc[k] || []).push(e[field]); } });
+    return lastNDates(n).map(d => { const a = acc[dstr(d)]; return { date: d, v: a ? a.reduce((s, x) => s + x, 0) / a.length : null }; });
+  }
+  // 日ごとの気分（その日の最新値）。記録のない日は null
+  function dailyMood(key, n) {
+    const m = {}; events(key).forEach(e => { if (e.mood) m[dstr(new Date(e.ts))] = e.mood; });
+    return lastNDates(n).map(d => ({ date: d, v: (dstr(d) in m) ? m[dstr(d)] : null }));
+  }
+
+  // 日次件数の棒グラフ（SVG）。記録のない日は薄いグリッド色
+  function svgBars(series, color) {
+    const W = 280, H = 46, n = series.length, gap = 1.2;
+    const bw = (W - (n - 1) * gap) / n;
+    const max = Math.max(1, ...series.map(s => s.v));
+    const bars = series.map((s, i) => {
+      const h = s.v ? Math.max(2, s.v / max * (H - 3)) : 0;
+      const x = i * (bw + gap), y = H - h;
+      return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="1" fill="${s.v ? color : 'var(--grid)'}"/>`;
+    }).join("");
+    return `<svg class="spark" viewBox="0 0 ${W} ${H}" role="img" aria-label="日次件数の推移">${bars}</svg>`;
+  }
+  // 1〜5スケールの折れ線（SVG）。記録のない日は線を切る
+  function svgLine(series, color) {
+    const W = 280, H = 30, lo = 1, hi = 5;
+    const xs = i => series.length > 1 ? i / (series.length - 1) * W : W / 2;
+    const ys = v => (H - 3) - (v - lo) / (hi - lo) * (H - 6);
+    let d = "", dots = "", started = false;
+    series.forEach((s, i) => {
+      if (s.v == null) { started = false; return; }
+      const x = xs(i), y = ys(s.v);
+      d += (started ? " L" : " M") + x.toFixed(1) + " " + y.toFixed(1);
+      dots += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.7" fill="${color}"/>`;
+      started = true;
+    });
+    return `<svg class="spark" viewBox="0 0 ${W} ${H}" role="img" aria-label="1〜5評価の推移"><path d="${d}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>${dots}</svg>`;
+  }
+
+  // 推移カード（表示のみ）。棒＝日次件数、折れ線＝量/質/評価/気分の1〜5評価
+  function trendCard(c) {
+    const unit = c.unit || "回";
+    const today = todayEvents(c.key).length;
+    const w = countDays(c.key, 7), m = countDays(c.key, 30);
+    let bigval, biglabel, stats, chart = "";
+
+    if (c.type === "mood") {
+      const cur = todayMood(c.key);
+      bigval = cur ? (MOODS.find(x => x.v === cur) || {}).e : "—";
+      biglabel = cur ? `今の気分（${cur}/5）` : "未記録";
+      stats = `今日 <b>${today}</b>回記録 ／ 直近7日 <b>${w}</b>回`;
+      chart = `<div class="trend-row"><span class="tlabel">気分</span>${svgLine(dailyMood(c.key, TREND_DAYS), "var(--accent-hi)")}</div>`;
+    } else if (c.type === "rated2") {
+      bigval = today; biglabel = "今日 " + unit;
+      const aAvg = avgRating(c.key, 30, "amount"), qAvg = avgRating(c.key, 30, "quality");
+      stats = `直近7日 <b>${w}</b>${unit} ／ 30日 <b>${m}</b>${unit}${aAvg ? ` ／ 量平均 <b>★${aAvg.toFixed(1)}</b>` : ""}${qAvg ? ` ／ 質平均 <b>★${qAvg.toFixed(1)}</b>` : ""}`;
+      chart = `<div class="trend-row"><span class="tlabel">回数</span>${svgBars(dailyCounts(c.key, TREND_DAYS), "var(--accent)")}</div>`
+        + `<div class="trend-row"><span class="tlabel">量</span>${svgLine(dailyAvg(c.key, TREND_DAYS, "amount"), "var(--s1)")}</div>`
+        + `<div class="trend-row"><span class="tlabel">質</span>${svgLine(dailyAvg(c.key, TREND_DAYS, "quality"), "var(--s2)")}</div>`;
+    } else if (c.type === "rated") {
+      bigval = today; biglabel = "今日 " + unit;
+      const avg = avgRating(c.key, 30);
+      stats = `直近7日 <b>${w}</b>${unit} ／ 30日 <b>${m}</b>${unit}${avg ? ` ／ 平均 <b>★${avg.toFixed(1)}</b>` : ""}`;
+      chart = `<div class="trend-row"><span class="tlabel">回数</span>${svgBars(dailyCounts(c.key, TREND_DAYS), "var(--accent)")}</div>`
+        + `<div class="trend-row"><span class="tlabel">評価</span>${svgLine(dailyAvg(c.key, TREND_DAYS, "rating"), "var(--s1)")}</div>`;
+    } else { // count
+      bigval = today; biglabel = "今日 " + unit;
+      stats = `直近7日 <b>${w}</b>${unit} ／ 30日 <b>${m}</b>${unit}`;
+      chart = `<div class="trend-row"><span class="tlabel">回数</span>${svgBars(dailyCounts(c.key, TREND_DAYS), "var(--accent)")}</div>`;
+    }
+
+    return `
+      <div class="counter">
+        <div class="chead">
+          <span class="cemoji">${c.emoji || ""}</span>
+          <span class="cname">${c.name}</span>
+          ${c.goal ? `<span class="cgoal">目標: ${c.goal}</span>` : ""}
+        </div>
+        <div class="cbig"><span class="counter-val">${bigval}</span><span class="cunit">${biglabel}</span></div>
+        <div class="trend">${chart}<div class="taxis"><span>${TREND_DAYS}日前</span><span>今日</span></div></div>
+        <div class="counter-stats">${stats}</div>
+      </div>`;
+  }
+
+  function render() { box.innerHTML = DATA.counters.map(trendCard).join(""); }
+
+  /* ============================================================
+     GitHub Private リポジトリ読み込み（表示専用）
+     記録はカウンターページ側で行う。ここでは記録を取得して推移を描くだけ。
+     ※ Claudeアーティファクトでは外部通信がブロックされ動作しない。
+       HTMLファイルを各端末に置いて開くか GitHub Pages で使う。
+     ============================================================ */
+  const CFG_KEY = "mtworks_gh_cfg";
+  const statusEl = document.getElementById("gh-status");
+  function getCfg() { try { return JSON.parse(localStorage.getItem(CFG_KEY)) || {}; } catch (e) { return {}; } }
+  function setCfg(c) { localStorage.setItem(CFG_KEY, JSON.stringify(c)); }
+  function cfgOk(c) { return c && c.owner && c.repo && c.path && c.token; }
+  function status(msg) { if (statusEl) statusEl.textContent = msg; }
+  function hhmm() { const d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
+
+  const b64dec = s => decodeURIComponent(escape(atob((s || "").replace(/\n/g, ""))));
+
+  async function ghGet(c) {
+    const url = `https://api.github.com/repos/${c.owner}/${c.repo}/contents/${c.path}?ref=${c.branch || "main"}`;
+    const r = await fetch(url, { headers: { Authorization: "Bearer " + c.token, Accept: "application/vnd.github+json" } });
+    if (r.status === 404) return { data: null, sha: null };
+    if (!r.ok) throw new Error("GET " + r.status);
+    const j = await r.json();
+    return { data: JSON.parse(b64dec(j.content)), sha: j.sha };
+  }
+  let syncing = false;
+  // ダッシュボードは表示専用。GitHubの記録を読み込むだけで書き込みはしない
+  async function sync() {
+    const c = getCfg();
+    if (!cfgOk(c)) { status("未設定"); return; }
+    if (syncing) return;
+    syncing = true; status("読込中…");
+    try {
+      const remote = await ghGet(c);
+      if (remote.data) { save(remote.data.events || {}); saveDeleted(remote.data.deleted || []); }
+      render();
+      status("更新 " + hhmm());
+    } catch (e) {
+      status("読込失敗: " + e.message);
+    } finally { syncing = false; }
+  }
+
+  // 設定パネルUI
+  const panel = document.getElementById("gh-cfg-panel");
+  function fillCfg() {
+    const c = getCfg();
+    document.getElementById("cfg-owner").value = c.owner || "";
+    document.getElementById("cfg-repo").value = c.repo || "";
+    document.getElementById("cfg-path").value = c.path || "counters.json";
+    document.getElementById("cfg-branch").value = c.branch || "main";
+    document.getElementById("cfg-token").value = c.token || "";
+  }
+  document.getElementById("gh-config").addEventListener("click", () => { fillCfg(); panel.classList.toggle("open"); });
+  document.getElementById("cfg-save").addEventListener("click", () => {
+    setCfg({
+      owner: document.getElementById("cfg-owner").value.trim(),
+      repo: document.getElementById("cfg-repo").value.trim(),
+      path: document.getElementById("cfg-path").value.trim() || "counters.json",
+      branch: document.getElementById("cfg-branch").value.trim() || "main",
+      token: document.getElementById("cfg-token").value.trim(),
+    });
+    panel.classList.remove("open");
+    sync();
+  });
+  document.getElementById("cfg-clear").addEventListener("click", () => {
+    localStorage.removeItem(CFG_KEY); fillCfg(); status("設定を削除しました");
+  });
+  document.getElementById("gh-sync").addEventListener("click", sync);
+
+  render();
+  if (cfgOk(getCfg())) { status("読込中…"); sync(); } else { status("未設定（読込設定を入力してください）"); }
+})();
+
+// 追加で変動する部分をまとめて再描画
+function renderAll() { renderAssets(); renderPsa(); renderGold(); renderPlants(); renderDigital(); renderSubs(); renderHealth(); renderGoshuin(); renderCerts(); renderSkills(); }
+
+// DATA全体を反映（データ差し替え後の全再描画）
+function renderEverything() {
+  document.getElementById("asof").textContent = "更新日: " + (DATA.asOf || "");
+  renderAll();
+  renderProjects();
+  drawTrend();
+}
+
+/* ================================================================
+   実データの読み書き（方式A：非公開リポジトリ dashboard.json）
+   このHTML自体には実データを持たない。GitHub同期設定（トークン）を
+   入れた端末でのみ dashboard.json を読み込み・保存する。
+   設定は日次カウンターと同じ mtworks_gh_cfg を共用する。
+   ================================================================ */
+(function dashboardData() {
+  const DATA_PATH = "dashboard.json";
+  const st = document.getElementById("data-status");
+  function ghCfg() { try { return JSON.parse(localStorage.getItem("mtworks_gh_cfg")) || {}; } catch (e) { return {}; } }
+  function ready(c) { return c && c.owner && c.repo && c.token; }
+  function dstatus(m) { if (st) st.textContent = m; }
+  function hm() { const d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
+  const enc = s => btoa(unescape(encodeURIComponent(s)));
+  const dec = s => decodeURIComponent(escape(atob((s || "").replace(/\n/g, ""))));
+
+  async function get(c) {
+    const url = `https://api.github.com/repos/${c.owner}/${c.repo}/contents/${DATA_PATH}?ref=${c.branch || "main"}`;
+    const r = await fetch(url, { headers: { Authorization: "Bearer " + c.token, Accept: "application/vnd.github+json" } });
+    if (r.status === 404) return { data: null, sha: null };
+    if (!r.ok) throw new Error("GET " + r.status);
+    const j = await r.json();
+    return { data: JSON.parse(dec(j.content)), sha: j.sha };
+  }
+  async function put(c, obj, sha) {
+    const url = `https://api.github.com/repos/${c.owner}/${c.repo}/contents/${DATA_PATH}`;
+    const body = { message: "dashboard " + new Date().toISOString(), content: enc(JSON.stringify(obj, null, 2)), branch: c.branch || "main" };
+    if (sha) body.sha = sha;
+    const r = await fetch(url, { method: "PUT", headers: { Authorization: "Bearer " + c.token, Accept: "application/vnd.github+json", "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error("PUT " + r.status);
+    return (await r.json()).content.sha;
+  }
+
+  // 追加分（localStorage）を DATA に畳み込んだ完全なデータを作る
+  function mergedSkills() {
+    const groups = DATA.skills.map(g => ({ group: g.group, items: g.items.slice() }));
+    added.skills.forEach(s => {
+      let g = groups.find(x => x.group === s.group);
+      if (!g) { g = { group: s.group || "その他", items: [] }; groups.push(g); }
+      g.items.push({ name: s.name, level: s.level });
+    });
+    return groups;
+  }
+  function fullData() {
+    return Object.assign({}, DATA, {
+      psaCards: psaLedger(), goldHoldings: goldLedger(), plants: plantLedger(),
+      digital: digitalLedger(), subscriptions: subLedger(), goshuin: goshuinLedger(),
+      certifications: DATA.certifications.concat(added.certifications), skills: mergedSkills(),
+    });
+  }
+  function clearAdded() {
+    Object.keys(added).forEach(k => { if (Array.isArray(added[k])) added[k].length = 0; });
+    saveAdd(added);
+  }
+
+  async function load() {
+    const c = ghCfg();
+    if (!ready(c)) { dstatus("ローカル表示（サンプル。同期設定でデータ読込）"); return; }
+    dstatus("データ取得中…");
+    try {
+      const g = await get(c);
+      if (g.data) { DATA = g.data; renderEverything(); dstatus("データ読込 " + hm()); }
+      else { dstatus("保存データなし（サンプル表示）。「GitHubにデータ保存」で作成"); }
+    } catch (e) { dstatus("取得失敗: " + e.message); }
+  }
+  async function saveData() {
+    const c = ghCfg();
+    if (!ready(c)) { alert("先に日次カウンターの「⚙️ 同期設定」でGitHubトークンを設定してください。"); return; }
+    dstatus("保存中…");
+    try {
+      const full = fullData();
+      let g;
+      try { g = await get(c); } catch (e) { g = { sha: null }; }
+      await put(c, full, g.sha);
+      DATA = full; clearAdded(); renderEverything();
+      dstatus("保存完了 " + hm());
+    } catch (e) { dstatus("保存失敗: " + e.message); }
+  }
+
+  document.getElementById("data-save").addEventListener("click", saveData);
+  document.getElementById("data-reload").addEventListener("click", load);
+  // 初期表示（サンプル）→ 設定があれば実データで上書き
+  renderEverything();
+  load();
+})();
+</script>
+</body>
+</html>
