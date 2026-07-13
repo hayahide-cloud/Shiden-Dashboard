@@ -261,7 +261,10 @@
   .counter .trend { margin-top: 8px; display: flex; flex-direction: column; gap: 6px; }
   .counter .trend-row { display: flex; align-items: center; gap: 8px; }
   .counter .trend-row .tlabel { font-size: 11px; color: var(--muted); min-width: 2.4em; text-align: right; flex: none; }
-  .counter .trend .spark { flex: 1; display: block; width: 100%; height: auto; overflow: visible; }
+  /* flex行内では height:auto だとSVGが高さ0に潰れる。系列ごとに高さを明示する */
+  .counter .trend .spark { flex: 1; display: block; width: 100%; overflow: visible; }
+  .counter .trend .spark-bar { height: 40px; }
+  .counter .trend .spark-line { height: 30px; }
   .counter .taxis { display: flex; justify-content: space-between; font-size: 10px; color: var(--muted); margin-top: 2px; padding-left: calc(2.4em + 8px); }
   .counter .retro { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--grid); display: none; }
   .counter .retro.open { display: block; }
@@ -1542,7 +1545,7 @@ document.getElementById("reset-btn").addEventListener("click", resetAdditions);
       const x = i * (bw + gap), y = H - h;
       return `<rect x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="1" fill="${s.v ? color : 'var(--grid)'}"/>`;
     }).join("");
-    return `<svg class="spark" viewBox="0 0 ${W} ${H}" role="img" aria-label="日次件数の推移">${bars}</svg>`;
+    return `<svg class="spark spark-bar" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="日次件数の推移">${bars}</svg>`;
   }
   // 1〜5スケールの折れ線（SVG）。記録のない日は線を切る
   function svgLine(series, color) {
@@ -1557,7 +1560,7 @@ document.getElementById("reset-btn").addEventListener("click", resetAdditions);
       dots += `<circle cx="${x.toFixed(1)}" cy="${y.toFixed(1)}" r="1.7" fill="${color}"/>`;
       started = true;
     });
-    return `<svg class="spark" viewBox="0 0 ${W} ${H}" role="img" aria-label="1〜5評価の推移"><path d="${d}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>${dots}</svg>`;
+    return `<svg class="spark spark-line" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="1〜5評価の推移"><path d="${d}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>${dots}</svg>`;
   }
 
   // 推移カード（表示のみ）。棒＝日次件数、折れ線＝量/質/評価/気分の1〜5評価
