@@ -458,11 +458,12 @@
       </div>
     </div>
     <div class="sync-cfg" id="gh-cfg-panel">
-      <label>GitHub Private リポジトリの記録を読み込み、推移を表示します（このダッシュボードは記録せず表示のみ）。記録は各端末のカウンターページから行います。Fine-grained トークンは対象リポジトリの Contents 読み取り権限で発行してください。</label>
+      <label>GitHub Private リポジトリの記録（lifelogger）を読み込み推移を表示し、資産データは別リポの dashboard.json に読み書きします。Fine-grained トークン1本に「lifeloggerリポ=Contents読取」＋「資産リポ=Contents読み書き」の権限を付与してください。記録自体は各端末のカウンターページから行います。</label>
       <div class="cfg-grid">
         <input id="cfg-owner" placeholder="owner（例: hayahide-cloud）">
-        <input id="cfg-repo"  placeholder="repo（例: hayahide-log）">
-        <input id="cfg-path"  placeholder="path（例: counters.json）" value="counters.json">
+        <input id="cfg-repo"  placeholder="lifeloggerリポ（例: Hayahide-Log）">
+        <input id="cfg-asset-repo" placeholder="資産リポ（例: Shiden-Assets）">
+        <input id="cfg-path"  placeholder="lifeloggerのpath（例: counters.json）" value="counters.json">
         <input id="cfg-branch" placeholder="branch（例: main）" value="main">
         <input id="cfg-token" type="password" placeholder="Fine-grained token（github_pat_...）">
       </div>
@@ -1657,6 +1658,7 @@ document.getElementById("reset-btn").addEventListener("click", resetAdditions);
     const c = getCfg();
     document.getElementById("cfg-owner").value = c.owner || "";
     document.getElementById("cfg-repo").value = c.repo || "";
+    document.getElementById("cfg-asset-repo").value = c.assetRepo || "";
     document.getElementById("cfg-path").value = c.path || "counters.json";
     document.getElementById("cfg-branch").value = c.branch || "main";
     document.getElementById("cfg-token").value = c.token || "";
@@ -1666,6 +1668,7 @@ document.getElementById("reset-btn").addEventListener("click", resetAdditions);
     setCfg({
       owner: document.getElementById("cfg-owner").value.trim(),
       repo: document.getElementById("cfg-repo").value.trim(),
+      assetRepo: document.getElementById("cfg-asset-repo").value.trim(),
       path: document.getElementById("cfg-path").value.trim() || "counters.json",
       branch: document.getElementById("cfg-branch").value.trim() || "main",
       token: document.getElementById("cfg-token").value.trim(),
@@ -1697,20 +1700,24 @@ function renderEverything() {
    実データの読み書き（方式A：非公開リポジトリ dashboard.json）
    このHTML自体には実データを持たない。GitHub同期設定（トークン）を
    入れた端末でのみ dashboard.json を読み込み・保存する。
-   設定は日次カウンターと同じ mtworks_gh_cfg を共用する。
+   設定は日次カウンターと同じ mtworks_gh_cfg を共用するが、
+   保存先は lifelogger とは別リポ（cfg.assetRepo。例: Shiden-Assets）に分離する。
+   トークン1本で lifelogger リポ=読取、資産リポ=読み書き の両権限を持たせる。
    ================================================================ */
 (function dashboardData() {
   const DATA_PATH = "dashboard.json";
   const st = document.getElementById("data-status");
   function ghCfg() { try { return JSON.parse(localStorage.getItem("mtworks_gh_cfg")) || {}; } catch (e) { return {}; } }
-  function ready(c) { return c && c.owner && c.repo && c.token; }
+  // 資産の保存先リポ。assetRepo 未設定なら旧挙動（lifeloggerリポと同居）にフォールバック
+  function assetRepo(c) { return (c && (c.assetRepo || c.repo)) || ""; }
+  function ready(c) { return c && c.owner && assetRepo(c) && c.token; }
   function dstatus(m) { if (st) st.textContent = m; }
   function hm() { const d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
   const enc = s => btoa(unescape(encodeURIComponent(s)));
   const dec = s => decodeURIComponent(escape(atob((s || "").replace(/\n/g, ""))));
 
   async function get(c) {
-    const url = `https://api.github.com/repos/${c.owner}/${c.repo}/contents/${DATA_PATH}?ref=${c.branch || "main"}`;
+    const url = `https://api.github.com/repos/${c.owner}/${assetRepo(c)}/contents/${DATA_PATH}?ref=${c.branch || "main"}`;
     const r = await fetch(url, { headers: { Authorization: "Bearer " + c.token, Accept: "application/vnd.github+json" } });
     if (r.status === 404) return { data: null, sha: null };
     if (!r.ok) throw new Error("GET " + r.status);
@@ -1718,7 +1725,7 @@ function renderEverything() {
     return { data: JSON.parse(dec(j.content)), sha: j.sha };
   }
   async function put(c, obj, sha) {
-    const url = `https://api.github.com/repos/${c.owner}/${c.repo}/contents/${DATA_PATH}`;
+    const url = `https://api.github.com/repos/${c.owner}/${assetRepo(c)}/contents/${DATA_PATH}`;
     const body = { message: "dashboard " + new Date().toISOString(), content: enc(JSON.stringify(obj, null, 2)), branch: c.branch || "main" };
     if (sha) body.sha = sha;
     const r = await fetch(url, { method: "PUT", headers: { Authorization: "Bearer " + c.token, Accept: "application/vnd.github+json", "Content-Type": "application/json" }, body: JSON.stringify(body) });
