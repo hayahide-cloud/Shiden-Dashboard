@@ -103,6 +103,12 @@
   .addform.open { display: block; }
   .form-actions { display: flex; gap: 10px; margin-top: 4px; }
 
+  /* 並び替え（表示のみ・端末ごとに記憶） */
+  .sortrow { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+  .sortlabel { font-size: 11px; color: var(--muted); flex: none; }
+  .cbtn.sortbtn { font-size: 11.5px; font-weight: 600; padding: 7px 11px; color: var(--ink-2); }
+  .cbtn.sortbtn.sel { background: linear-gradient(135deg, var(--accent-deep) 0%, #a855f7 60%, #b678fb 100%); color: #fff; border-color: transparent; }
+
   /* 一覧 */
   .items { margin-top: 4px; }
   .irow { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--grid); font-size: 13px; }
@@ -222,7 +228,7 @@ const LEDGERS = [
       { key: "acquired", label: "取得年月", placeholder: "2026-07", hint: "任意" },
       { key: "note",   label: "相場メモ", hint: "子株の有無・売却検討など（任意）" },
     ] },
-  { cat: "digital", title: "デジタルコレクション", emoji: "💾", sumField: "price", inTotal: false,
+  { cat: "digital", title: "デジタルコレクション", emoji: "💾", sumField: "price", inTotal: false, nameField: "title",
     note: "再販不可のライセンスのため総資産には合算されない（購入額の記録用）",
     disp: i => ({ main: (i.platform ? "[" + i.platform + "] " : "") + (i.title || ""), sub: [i.acquired, i.note].filter(Boolean).join(" / ") }),
     fields: [
@@ -365,6 +371,18 @@ function totals(d) {
   return { assets, total: assets.reduce((s, a) => s + a.resolved, 0) };
 }
 
+/* ---------- 並び替え（表示のみ。保存データの順序は変えない・端末ごとに記憶） ---------- */
+const SORT_KEY = "shiden_asset_sort_v1";
+function sortPrefs() { try { return JSON.parse(localStorage.getItem(SORT_KEY)) || {}; } catch (e) { return {}; } }
+function setSortPref(cat, mode) { const p = sortPrefs(); p[cat] = mode; localStorage.setItem(SORT_KEY, JSON.stringify(p)); }
+function sortedItems(l, arr) {
+  const mode = sortPrefs()[l.cat] || "added";
+  const nameF = l.nameField || "name";
+  if (mode === "name") return arr.slice().sort((a, b) => String(a[nameF] || "").localeCompare(String(b[nameF] || ""), "ja"));
+  if (mode === "value") return arr.slice().sort((a, b) => (b[l.sumField] || 0) - (a[l.sumField] || 0)); // 高い順
+  return arr.slice().reverse(); // 追加順（新しい順）
+}
+
 /* ---------- 描画 ---------- */
 const app = document.getElementById("app");
 let editing = null;   // { cat, id, match } 編集中の項目。null=新規追加モード
@@ -382,7 +400,7 @@ function ledgerCard(l, d) {
   const sum = l.noValue ? 0 : arr.reduce((s, i) => s + (i[l.sumField] || 0), 0);
   const isEdit = editing && editing.cat === l.cat;
   const editItem = isEdit ? arr.find(x => (editing.id && x.id === editing.id) || itemKey(x) === editing.match) : null;
-  const rows = arr.length ? arr.slice().reverse().map(i => {
+  const rows = arr.length ? sortedItems(l, arr).map(i => {
     const dp = l.disp(i);
     return `<div class="irow">
       <span class="iname">${esc(dp.main || "")}${dp.sub ? `<br><span class="isub">${esc(dp.sub)}</span>` : ""}</span>
@@ -394,10 +412,14 @@ function ledgerCard(l, d) {
     </div>`;
   }).join("") : `<div class="iempty">まだ登録がありません</div>`;
   const formOpen = openForm === l.cat || isEdit;
+  const mode = sortPrefs()[l.cat] || "added";
+  const sortBtn = (m, label) => `<button class="cbtn sortbtn${mode === m ? " sel" : ""}" data-sortcat="${l.cat}" data-sortmode="${m}">${label}</button>`;
+  const sortRow = arr.length > 1 ? `<div class="sortrow"><span class="sortlabel">並び</span>${sortBtn("added", "追加順")}${sortBtn("name", "名前順")}${l.noValue ? "" : sortBtn("value", "金額順")}</div>` : "";
   return `<div class="card" data-cat="${l.cat}">
     <div class="chead"><span class="cemoji">${l.emoji}</span><span class="cname">${l.title}</span>
       <span class="csum"><b>${arr.length}</b>件${l.noValue ? "" : ` ／ <b>${yen(sum)}</b>`}${(l.inTotal || l.noValue) ? "" : "<br>総資産に含めない"}</span></div>
     ${l.note ? `<div class="fhint" style="margin-bottom:8px">${l.note}</div>` : ""}
+    ${sortRow}
     <div class="items">${rows}</div>
     <div class="cfoot"><button class="cbtn rec" data-open="${l.cat}">${formOpen ? "フォームを閉じる" : "＋ 追加"}</button></div>
     <div class="addform${formOpen ? " open" : ""}" data-form="${l.cat}">
@@ -483,6 +505,11 @@ app.addEventListener("click", e => {
     return;
   }
   if (btn.dataset.cancel) { editing = null; openForm = null; render(); return; }
+
+  if (btn.dataset.sortcat) { // 並び替えの切替（表示のみ・端末に記憶）
+    setSortPref(btn.dataset.sortcat, btn.dataset.sortmode);
+    return render();
+  }
 
   if (btn.dataset.edit) { // 台帳項目の編集開始（フォームに値を流し込む）
     editing = { cat: btn.dataset.edit, id: btn.dataset.id || null, match: btn.dataset.match || null };
