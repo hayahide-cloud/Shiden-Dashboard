@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Shiden Assets</title>
+<meta name="description" content="資産ダッシュボードの手入力アプリ（スマホ用・GitHub同期）">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Crect width='512' height='512' rx='115' fill='%237c3aed'/%3E%3Cpath d='M296 66 L158 296 L248 296 L212 446 L376 218 L276 218 L336 66 Z' fill='%23facc15'/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="紫電Assets">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#09060f">
+<style>
+  /* ================================================================
+     Shiden Assets — 資産ダッシュボードの手入力アプリ（スマホ用・GitHub同期）
+     Shiden LifeLogger の技術（単一HTML・GitHub Contents API同期・
+     localStorage設定・紫電ダークテーマ）を流用している。
+     秘密情報は一切含まない。実データは Private の Hayahide-Log の
+     dashboard.json に保存され、ダッシュボード（Shiden-Dashboard）が
+     同じファイルを読み込んで表示する。
+     トークンは各端末のブラウザ内(localStorage)のみに保存される。
+     ================================================================ */
+  :root {
+    --page: #09060f; --surface: #14101d; --surface-2: #1d1729;
+    --ink: #ece5fa; --ink-2: #c4b7dc; --muted: #9b8db8;
+    --grid: #2a2140; --border: rgba(168,120,255,0.16);
+    --accent: #a06bff; --accent-hi: #c084fc; --accent-deep: #7c3aed;
+    --good: #34d399; --bad: #f87171;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { color-scheme: dark; }
+  body {
+    background:
+      radial-gradient(920px 500px at 82% -12%, rgba(124,58,237,0.20), transparent 60%),
+      var(--page);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Yu Gothic UI", sans-serif;
+    line-height: 1.6; padding: max(20px, env(safe-area-inset-top)) 16px 48px; min-height: 100vh;
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 720px; margin: 0 auto; }
+  header { margin-bottom: 22px; text-align: center; padding-top: 4px; }
+  h1 { font-size: 25px; font-weight: 800; color: #fff; letter-spacing: 0.01em; }
+  h1 .logo-badge { width: 30px; height: 30px; vertical-align: -0.17em; margin-right: 9px; }
+  h1 .brand-grad {
+    background: linear-gradient(90deg, #a78bfa, #7c3aed);
+    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  }
+  .sub { color: var(--muted); font-size: 11.5px; margin-top: 5px; }
+  .header-underline { width: 46px; height: 2px; margin: 12px auto 0; border-radius: 2px; background: linear-gradient(90deg, var(--accent-deep), var(--accent-hi)); }
+
+  .card { background: linear-gradient(180deg, rgba(124,58,237,0.06), rgba(124,58,237,0) 46%), var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 18px; margin-bottom: 16px; box-shadow: 0 10px 28px rgba(0,0,0,0.35); }
+  .chead { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .cemoji { font-size: 22px; }
+  .cname { font-size: 16px; font-weight: 700; letter-spacing: 0.01em; }
+  .csum { font-size: 12px; color: var(--muted); margin-left: auto; text-align: right; }
+  .csum b { color: var(--ink); font-weight: 700; }
+
+  .sync-head { display: flex; flex-direction: column; align-items: flex-end; gap: 12px; }
+  .gh-status { font-size: 12px; color: var(--muted); }
+  .linkbtns { display: inline-flex; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+  .linkbtn { display: inline-flex; align-items: center; gap: 6px; font-family: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; color: var(--ink-2); background: var(--surface-2); border: 1px solid var(--border); border-radius: 999px; padding: 7px 13px; text-decoration: none; transition: color .15s, border-color .15s, background .15s; }
+  .linkbtn svg { width: 15px; height: 15px; flex: none; }
+  .linkbtn:hover, .linkbtn:active { color: var(--accent-hi); border-color: rgba(168,120,255,0.45); background: rgba(124,58,237,0.14); }
+  .linkbtn.danger { color: var(--muted); background: transparent; }
+  .linkbtn.danger:hover, .linkbtn.danger:active { color: var(--bad); border-color: rgba(248,113,113,0.4); background: rgba(248,113,113,0.10); }
+  .btn { font-family: inherit; font-weight: 700; cursor: pointer; color: #fff; border: none; border-radius: 999px; padding: 9px 18px; background: linear-gradient(135deg, var(--accent-deep) 0%, #a855f7 60%, #b678fb 100%); box-shadow: 0 6px 20px rgba(124,58,237,0.3); }
+
+  .sync-cfg { display: none; margin-top: 14px; }
+  .sync-cfg.open { display: block; }
+  .sync-cfg label { font-size: 12px; color: var(--ink-2); display: block; margin-bottom: 10px; }
+  .cfg-grid { display: grid; gap: 8px; }
+  .sync-cfg input { width: 100%; font-family: inherit; font-size: 16px; background: var(--surface-2); color: var(--ink); border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px; }
+  .sync-cfg input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(160,107,255,0.2); }
+  .cfg-actions { display: flex; align-items: center; gap: 14px; margin-top: 12px; flex-wrap: wrap; }
+
+  /* サマリー */
+  .hero { text-align: center; padding: 6px 0 2px; }
+  .hero .hv { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .hero .hl { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .sum-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 14px; }
+  .sum-item { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 10px 12px; }
+  .sum-item .sv { font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .sum-item .sl { font-size: 11px; color: var(--muted); }
+  .pending-note { font-size: 12px; color: #e0902a; margin-top: 12px; text-align: center; }
+
+  /* 入力行・フォーム */
+  .frow { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; flex-wrap: wrap; }
+  .flabel { font-size: 12px; color: var(--muted); flex: 1 0 100%; }
+  .flabel .hint { color: var(--grid); }
+  .fin { flex: 1; min-width: 0; font-family: inherit; font-size: 16px; background: var(--surface-2); color: var(--ink); border: 1px solid var(--border); border-radius: 11px; padding: 11px 13px; }
+  .fin:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(160,107,255,0.2); }
+  .fin::-webkit-outer-spin-button, .fin::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+  .fin[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+  .fhint { font-size: 11px; color: var(--muted); flex: 1 0 100%; margin-top: -4px; }
+  .cbtn { cursor: pointer; font-family: inherit; font-size: 14px; font-weight: 700; line-height: 1; border: 1px solid var(--border); border-radius: 11px; background: var(--surface-2); color: var(--ink); padding: 12px 14px; transition: transform .05s; }
+  .cbtn:active { transform: scale(0.95); }
+  .cbtn.rec { background: linear-gradient(135deg, var(--accent-deep) 0%, #a855f7 60%, #b678fb 100%); color: #fff; border: none; box-shadow: 0 6px 18px rgba(124,58,237,0.32); }
+  .cbtn.undo { color: var(--muted); font-size: 13px; font-weight: 600; background: transparent; }
+  .addform { display: none; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--grid); }
+  .addform.open { display: block; }
+  .form-actions { display: flex; gap: 10px; margin-top: 4px; }
+
+  /* 一覧 */
+  .items { margin-top: 4px; }
+  .irow { display: flex; align-items: center; gap: 8px; padding: 9px 0; border-bottom: 1px solid var(--grid); font-size: 13px; }
+  .irow:last-child { border-bottom: none; }
+  .iname { flex: 1; min-width: 0; color: var(--ink-2); word-break: break-word; }
+  .iname .isub { color: var(--muted); font-size: 11.5px; }
+  .ival { flex: none; font-variant-numeric: tabular-nums; font-weight: 700; }
+  .iact { flex: none; display: flex; gap: 6px; }
+  .ibtn { font-size: 12px; font-weight: 600; padding: 7px 11px; }
+  .iempty { color: var(--muted); font-size: 12px; padding: 6px 0; }
+  .cfoot { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+
+  footer { color: var(--muted); font-size: 11px; text-align: center; margin-top: 8px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1><svg class="logo-badge" viewBox="0 0 512 512" aria-hidden="true">
+      <defs>
+        <linearGradient id="badge-bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#a855f7"/><stop offset="1" stop-color="#6d28d9"/></linearGradient>
+        <linearGradient id="badge-bolt" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fde047"/><stop offset="1" stop-color="#facc15"/></linearGradient>
+      </defs>
+      <rect width="512" height="512" rx="115" fill="url(#badge-bg)"/>
+      <path d="M296 66 L158 296 L248 296 L212 446 L376 218 L276 218 L336 66 Z" fill="url(#badge-bolt)"/>
+    </svg><span class="brand-grad">Shiden</span> Assets</h1>
+    <p class="sub">資産手入力 / M.T.Works</p>
+    <div class="header-underline"></div>
+  </header>
+
+  <!-- 同期 -->
+  <div class="card">
+    <div class="sync-head">
+      <span id="gh-status" class="gh-status"></span>
+      <span class="linkbtns">
+        <a class="linkbtn" href="../" target="_blank" rel="noopener"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20V4"/><path d="M4 20h16"/><path d="M8 20v-6M13 20V9M18 20v-9"/></svg><span>ダッシュボード</span></a>
+        <button class="linkbtn" id="gh-sync" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 0 1-15.5 6.2M3 12a9 9 0 0 1 15.5-6.2"/><path d="M21 4v5h-5M3 20v-5h5"/></svg><span>同期</span></button>
+        <button class="linkbtn" id="gh-config" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg><span>設定</span></button>
+      </span>
+    </div>
+    <div class="sync-cfg" id="gh-cfg-panel">
+      <label>GitHub Private リポジトリ（Hayahide-Log）の dashboard.json に資産データを保存します（各端末で1回設定）。Fine-grained トークンは対象リポジトリのみ・Contents読み書きで発行してください。ダッシュボード側は「資産リポ」欄を空にすると同じファイルを読み込みます。</label>
+      <div class="cfg-grid">
+        <input id="cfg-owner" placeholder="owner（例: hayahide-cloud）" autocapitalize="off" autocorrect="off">
+        <input id="cfg-repo" placeholder="repo（例: Hayahide-Log）" value="Hayahide-Log" autocapitalize="off" autocorrect="off">
+        <input id="cfg-path" placeholder="path（例: dashboard.json）" value="dashboard.json" autocapitalize="off" autocorrect="off">
+        <input id="cfg-branch" placeholder="branch（例: main）" value="main" autocapitalize="off" autocorrect="off">
+        <input id="cfg-token" type="password" placeholder="Fine-grained token（github_pat_...）" autocapitalize="off" autocorrect="off">
+      </div>
+      <div class="cfg-actions">
+        <button class="btn" id="cfg-save" type="button">保存して同期</button>
+        <button class="linkbtn danger" id="cfg-clear" type="button">この端末の設定を削除</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="app"></div>
+  <footer>Shiden Assets — トークンとデータはこの公開ページには含まれません</footer>
+</div>
+
+<script>
+/* ================================================================
+   データ仕様
+   保存先: Hayahide-Log/dashboard.json（ダッシュボードと同一ファイル・同一スキーマ）
+   このアプリが管理するのは資産関連フィールドのみ:
+     assets（現金・土地の固定値） / collectionOther / otherMisc /
+     psaCards / goldHoldings / plants / digital / subscriptions /
+     history（月次推移） / asOf
+   それ以外のフィールド（projects・skills・counters 等）には触れず、
+   読み込んだ値をそのまま書き戻す（ダッシュボード側の管理領域を壊さない）。
+
+   同期方式（LifeLogger流）
+   編集は「操作キュー」(localStorage)に積み、同期時に最新リモートへ
+   適用してからPUTする。リモートが先に更新されていても（409）
+   取り直して再適用するので、別端末の変更を上書きしない。
+   ================================================================ */
+const CFG_KEY = "shiden_asset_gh_cfg", OPS_KEY = "shiden_asset_ops_v1";
+
+// 台帳カテゴリ定義。fields はダッシュボード（Shiden-Dashboard）の FORMS と同一に保つ
+// （スキーマを揃え、ダッシュボードがそのまま表示できるようにするため）
+const LEDGERS = [
+  { cat: "psaCards", title: "PSA鑑定カード", emoji: "🃏", sumField: "value", inTotal: true,
+    disp: i => ({ main: i.name, sub: [i.grade, i.cert, i.acquired].filter(Boolean).join(" / ") }),
+    fields: [
+      { key: "name",  label: "カード名",   req: true },
+      { key: "grade", label: "グレード",   placeholder: "PSA10", def: "PSA10" },
+      { key: "cert",  label: "鑑定番号",   hint: "スラブに印字された番号（任意）" },
+      { key: "value", label: "推定時価（円）", req: true, num: true },
+      { key: "cost",  label: "取得価格（円）", num: true, hint: "任意" },
+      { key: "acquired", label: "取得年月", placeholder: "2026-07", hint: "任意" },
+    ] },
+  { cat: "goldHoldings", title: "金（現物）", emoji: "🪙", sumField: "value", inTotal: true,
+    disp: i => ({ main: i.name, sub: [i.weight ? i.weight + "g" : "", i.acquired].filter(Boolean).join(" / ") }),
+    fields: [
+      { key: "name",   label: "品目",      req: true, placeholder: "地金 100g" },
+      { key: "weight", label: "重量（g）", num: true, hint: "任意" },
+      { key: "value",  label: "時価（円）", req: true, num: true },
+      { key: "cost",   label: "取得価格（円）", num: true, hint: "任意" },
+      { key: "acquired", label: "取得年月", placeholder: "2026-07", hint: "任意" },
+    ] },
+  { cat: "plants", title: "植物（アガベ・塊根）", emoji: "🌵", sumField: "value", inTotal: true,
+    disp: i => ({ main: i.name, sub: [i.demand ? "需要" + i.demand : "", i.acquired, i.note].filter(Boolean).join(" / ") }),
+    fields: [
+      { key: "name",   label: "品種名",    req: true, placeholder: "アガベ チタノタ 白鯨" },
+      { key: "demand", label: "需要（高/中/低）", placeholder: "高", def: "中", hint: "高・中・低のいずれか" },
+      { key: "value",  label: "相場・時価（円）", req: true, num: true },
+      { key: "cost",   label: "取得価格（円）", num: true, hint: "任意" },
+      { key: "acquired", label: "取得年月", placeholder: "2026-07", hint: "任意" },
+      { key: "note",   label: "相場メモ", hint: "子株の有無・売却検討など（任意）" },
+    ] },
+  { cat: "digital", title: "デジタルコレクション", emoji: "💾", sumField: "price", inTotal: false,
+    note: "再販不可のライセンスのため総資産には合算されない（購入額の記録用）",
+    disp: i => ({ main: (i.platform ? "[" + i.platform + "] " : "") + (i.title || ""), sub: [i.acquired, i.note].filter(Boolean).join(" / ") }),
+    fields: [
+      { key: "platform", label: "プラットフォーム", req: true, def: "Kindle", hint: "Kindle / FANZA / DLsite など" },
+      { key: "title",    label: "タイトル", req: true },
+      { key: "price",    label: "購入額（円）", num: true, hint: "任意" },
+      { key: "acquired", label: "取得年月", placeholder: "2026-07", hint: "任意" },
+      { key: "note",     label: "メモ", hint: "任意" },
+    ] },
+  { cat: "subscriptions", title: "サブスクリプション", emoji: "🔁", sumField: "amount", inTotal: false,
+    note: "固定費の記録（総資産には合算されない）",
+    disp: i => ({ main: i.name, sub: [(i.amount != null ? yen(i.amount) + "/" + (i.cycle || "月") : ""), i.category, i.next ? "次回" + i.next : ""].filter(Boolean).join(" / ") }),
+    fields: [
+      { key: "name",     label: "サービス名", req: true, placeholder: "Netflix" },
+      { key: "amount",   label: "金額（円）", req: true, num: true },
+      { key: "cycle",    label: "周期（月/年）", def: "月", hint: "月 または 年" },
+      { key: "category", label: "分類", placeholder: "動画", hint: "任意" },
+      { key: "next",     label: "次回更新日", placeholder: "2026-08-01", hint: "任意" },
+    ] },
+];
+
+// 固定値の資産額（一覧を持たない項目）。t:"asset"=DATA.assets の value / t:"scalar"=DATA直下の数値
+const SCALARS = [
+  { t: "asset",  name: "現金・預金",   label: "現金・預金" },
+  { t: "asset",  name: "土地・不動産", label: "土地・不動産" },
+  { t: "scalar", field: "collectionOther", label: "コレクションその他", hint: "未鑑定カード・BOX等の推定時価合計。PSA合計に加算される" },
+  { t: "scalar", field: "otherMisc",       label: "その他（機材等）",   hint: "植物合計に加算される" },
+];
+
+/* ---------- 基本ユーティリティ ---------- */
+const yen = n => "¥" + Number(n || 0).toLocaleString("ja-JP");
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function newId() { return (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : "a" + Date.now() + Math.random().toString(36).slice(2); }
+function today() { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function thisMonth() { return today().slice(0, 7); }
+const clone = o => JSON.parse(JSON.stringify(o));
+
+/* ---------- 操作キュー（未同期の変更） ---------- */
+function ops() { try { return JSON.parse(localStorage.getItem(OPS_KEY)) || []; } catch (e) { return []; } }
+function saveOps(a) { localStorage.setItem(OPS_KEY, JSON.stringify(a)); }
+function pushOp(op) { const a = ops(); a.push(Object.assign({ opId: newId(), mt: Date.now() }, op)); saveOps(a); render(); scheduleSync(); }
+function removeOps(ids) { saveOps(ops().filter(o => !ids.includes(o.opId))); }
+
+/* ---------- 初期データ（dashboard.json 未作成時の骨組み） ----------
+   資産フィールドは空・0で初期化。auto の項目はダッシュボードが台帳合計から
+   自動計算する。非資産フィールド（projects等）は空配列で用意し、内容は
+   ダッシュボード側の「GitHubにデータ保存」で埋まる。 */
+function skeleton() {
+  return {
+    asOf: today(),
+    assets: [
+      { name: "現金・預金",   value: 0,      color: "--s1", note: "普通・定期の合計" },
+      { name: "金（現物）",   value: "auto", color: "--s2", note: "地金・コインの時価合計" },
+      { name: "土地・不動産", value: 0,      color: "--s3", note: "評価額ベース" },
+      { name: "コレクション", value: "auto", color: "--s4", note: "PSA鑑定カード＋その他の合計" },
+      { name: "その他",       value: "auto", color: "--s5", note: "植物コレクション＋機材等の合計" },
+    ],
+    psaCards: [], collectionOther: 0, goldHoldings: [], plants: [], otherMisc: 0,
+    digital: [], subscriptions: [], history: [],
+    counters: [], health: [], goshuin: [], projects: [], certifications: [], skills: [],
+  };
+}
+
+/* ---------- 操作の適用（リモート最新に対して再適用できる純関数） ----------
+   項目の同定は id を最優先し、id が無い既存項目（ダッシュボード側で入力
+   された分）は編集開始時のスナップショット(match)との完全一致で探す。 */
+function itemKey(it) { const o = Object.assign({}, it); delete o.id; return JSON.stringify(o, Object.keys(o).sort()); }
+function findIndex(arr, op) {
+  if (op.id) { const i = arr.findIndex(x => x.id === op.id); if (i >= 0) return i; }
+  if (op.match) return arr.findIndex(x => itemKey(x) === op.match);
+  return -1;
+}
+function applyOps(data, opList) {
+  opList.forEach(op => {
+    if (op.t === "add") {
+      (data[op.cat] = data[op.cat] || []).push(clone(op.item));
+    } else if (op.t === "upd") {
+      const arr = data[op.cat] || [], i = findIndex(arr, op);
+      if (i >= 0) arr[i] = Object.assign({ id: arr[i].id || op.id }, clone(op.item));
+    } else if (op.t === "del") {
+      const arr = data[op.cat] || [], i = findIndex(arr, op);
+      if (i >= 0) arr.splice(i, 1);
+    } else if (op.t === "asset") {
+      const a = (data.assets || []).find(x => x.name === op.name);
+      if (a && a.value !== "auto") a.value = op.value; // auto項目（台帳から自動計算）は書き換えない
+    } else if (op.t === "scalar") {
+      data[op.field] = op.value;
+    } else if (op.t === "hist") {
+      data.history = data.history || [];
+      const h = data.history.find(x => x.month === op.month);
+      if (h) h.total = op.total; else data.history.push({ month: op.month, total: op.total });
+      data.history.sort((a, b) => a.month.localeCompare(b.month));
+    } else if (op.t === "histdel") {
+      data.history = (data.history || []).filter(x => x.month !== op.month);
+    }
+  });
+  return data;
+}
+// 管理対象の台帳項目すべてに id を付与（保存後の編集を id で確実に同定するため）
+function ensureIds(data) {
+  LEDGERS.forEach(l => (data[l.cat] || []).forEach(it => { if (!it.id) it.id = newId(); }));
+}
+
+/* ---------- 表示用データ（読み込み済みリモート＋未同期の操作） ---------- */
+let DATA = null; // 最後に読み込んだ（or 保存した）dashboard.json。null=未読込
+function viewData() { return applyOps(clone(DATA || skeleton()), ops()); }
+
+// 総資産の計算（ダッシュボードの autoVal と同一ロジック）
+function totals(d) {
+  const psa   = (d.psaCards || []).reduce((s, c) => s + (c.value || 0), 0);
+  const gold  = (d.goldHoldings || []).reduce((s, g) => s + (g.value || 0), 0);
+  const plant = (d.plants || []).reduce((s, p) => s + (p.value || 0), 0);
+  const autoVal = name => {
+    if (name.startsWith("金"))     return gold;
+    if (name.startsWith("コレク")) return psa + (d.collectionOther || 0);
+    if (name.startsWith("その他")) return plant + (d.otherMisc || 0);
+    return 0;
+  };
+  const assets = (d.assets || []).map(a => ({ ...a, resolved: a.value === "auto" ? autoVal(a.name) : (a.value || 0) }));
+  return { assets, total: assets.reduce((s, a) => s + a.resolved, 0) };
+}
+
+/* ---------- 描画 ---------- */
+const app = document.getElementById("app");
+let editing = null;   // { cat, id, match } 編集中の項目。null=新規追加モード
+let openForm = null;  // フォームを開いているカテゴリ
+
+function fieldHtml(f, val) {
+  return `<div class="frow"><span class="flabel">${f.label}${f.req ? " *" : ""}</span>
+    <input class="fin" data-fld="${f.key}" type="${f.num ? "number" : "text"}" inputmode="${f.num ? "numeric" : "text"}"
+      value="${esc(val != null ? val : (f.def || ""))}" placeholder="${esc(f.placeholder || "")}" autocapitalize="off" autocorrect="off">
+    ${f.hint ? `<span class="fhint">${f.hint}</span>` : ""}</div>`;
+}
+
+function ledgerCard(l, d) {
+  const arr = d[l.cat] || [];
+  const sum = arr.reduce((s, i) => s + (i[l.sumField] || 0), 0);
+  const isEdit = editing && editing.cat === l.cat;
+  const editItem = isEdit ? arr.find(x => (editing.id && x.id === editing.id) || itemKey(x) === editing.match) : null;
+  const rows = arr.length ? arr.slice().reverse().map(i => {
+    const dp = l.disp(i);
+    return `<div class="irow">
+      <span class="iname">${esc(dp.main || "")}${dp.sub ? `<br><span class="isub">${esc(dp.sub)}</span>` : ""}</span>
+      <span class="ival">${yen(i[l.sumField])}</span>
+      <span class="iact">
+        <button class="cbtn ibtn" data-edit="${l.cat}" data-id="${esc(i.id || "")}" data-match="${esc(i.id ? "" : itemKey(i))}">編集</button>
+        <button class="cbtn ibtn" data-del="${l.cat}" data-id="${esc(i.id || "")}" data-match="${esc(i.id ? "" : itemKey(i))}">削除</button>
+      </span>
+    </div>`;
+  }).join("") : `<div class="iempty">まだ登録がありません</div>`;
+  const formOpen = openForm === l.cat || isEdit;
+  return `<div class="card" data-cat="${l.cat}">
+    <div class="chead"><span class="cemoji">${l.emoji}</span><span class="cname">${l.title}</span>
+      <span class="csum"><b>${arr.length}</b>件 ／ <b>${yen(sum)}</b>${l.inTotal ? "" : "<br>総資産に含めない"}</span></div>
+    ${l.note ? `<div class="fhint" style="margin-bottom:8px">${l.note}</div>` : ""}
+    <div class="items">${rows}</div>
+    <div class="cfoot"><button class="cbtn rec" data-open="${l.cat}">${formOpen ? "フォームを閉じる" : "＋ 追加"}</button></div>
+    <div class="addform${formOpen ? " open" : ""}" data-form="${l.cat}">
+      ${l.fields.map(f => fieldHtml(f, editItem ? editItem[f.key] : null)).join("")}
+      <div class="form-actions">
+        <button class="cbtn rec" data-submit="${l.cat}">${isEdit ? "更新する" : "追加する"}</button>
+        ${isEdit ? `<button class="cbtn undo" data-cancel="1">キャンセル</button>` : ""}
+      </div>
+    </div>
+  </div>`;
+}
+
+function scalarsCard(d) {
+  const rows = SCALARS.map((s, idx) => {
+    const cur = s.t === "asset"
+      ? ((d.assets || []).find(a => a.name === s.name) || {}).value || 0
+      : d[s.field] || 0;
+    return `<div class="frow"><span class="flabel">${s.label}（円）</span>
+      <input class="fin" data-scalar="${idx}" type="number" inputmode="numeric" value="${cur}">
+      ${s.hint ? `<span class="fhint">${s.hint}</span>` : ""}</div>`;
+  }).join("");
+  return `<div class="card">
+    <div class="chead"><span class="cemoji">💰</span><span class="cname">手動更新の資産額</span></div>
+    ${rows}
+    <div class="form-actions"><button class="cbtn rec" id="scalar-save">金額を反映</button></div>
+  </div>`;
+}
+
+function historyCard(d) {
+  const h = (d.history || []).slice().reverse();
+  const rows = h.length ? h.map(x => `<div class="irow">
+      <span class="iname">${esc(x.month)}</span>
+      <span class="ival">${yen(x.total)}</span>
+      <span class="iact">
+        <button class="cbtn ibtn" data-histedit="${esc(x.month)}">編集</button>
+        <button class="cbtn ibtn" data-histdel="${esc(x.month)}">削除</button>
+      </span>
+    </div>`).join("") : `<div class="iempty">まだ記録がありません</div>`;
+  return `<div class="card">
+    <div class="chead"><span class="cemoji">📈</span><span class="cname">月次推移（総資産）</span></div>
+    <div class="fhint" style="margin-bottom:8px">月末に「今月を記録」を押すと、現在の総資産がその月の値として保存される（同じ月は上書き）</div>
+    <div class="items">${rows}</div>
+    <div class="addform open" style="border-top:1px solid var(--grid); margin-top:12px; padding-top:12px">
+      <div class="frow"><span class="flabel">月（YYYY-MM）と金額（円）</span>
+        <input class="fin" id="hist-month" type="month" value="${thisMonth()}" style="flex:1 1 9em">
+        <input class="fin" id="hist-total" type="number" inputmode="numeric" placeholder="金額" style="flex:1 1 8em">
+      </div>
+      <div class="form-actions">
+        <button class="cbtn rec" id="hist-now">今月を記録（現在の総資産）</button>
+        <button class="cbtn" id="hist-add">この値で記録</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function summaryCard(d) {
+  const t = totals(d);
+  const pend = ops().length;
+  return `<div class="card">
+    <div class="hero"><div class="hv">${yen(t.total)}</div><div class="hl">総資産（更新日 ${esc(d.asOf || "—")}）</div></div>
+    <div class="sum-grid">${t.assets.map(a => `<div class="sum-item"><div class="sv">${yen(a.resolved)}</div><div class="sl">${esc(a.name)}</div></div>`).join("")}</div>
+    ${pend ? `<div class="pending-note">未同期の変更が ${pend} 件あります（自動で同期されます）</div>` : ""}
+  </div>`;
+}
+
+function render() {
+  const d = viewData();
+  app.innerHTML = summaryCard(d) + scalarsCard(d) + LEDGERS.map(l => ledgerCard(l, d)).join("") + historyCard(d);
+}
+
+/* ---------- 操作イベント ---------- */
+app.addEventListener("click", e => {
+  const btn = e.target.closest(".cbtn");
+  if (!btn) return;
+  const d = viewData();
+
+  if (btn.dataset.open) { // 追加フォームの開閉
+    const cat = btn.dataset.open;
+    if (editing && editing.cat === cat) editing = null;
+    openForm = openForm === cat ? null : cat;
+    render();
+    if (openForm) app.querySelector(`.addform[data-form="${openForm}"]`).scrollIntoView({ block: "nearest" });
+    return;
+  }
+  if (btn.dataset.cancel) { editing = null; openForm = null; render(); return; }
+
+  if (btn.dataset.edit) { // 台帳項目の編集開始（フォームに値を流し込む）
+    editing = { cat: btn.dataset.edit, id: btn.dataset.id || null, match: btn.dataset.match || null };
+    openForm = null;
+    render();
+    app.querySelector(`.addform[data-form="${editing.cat}"]`).scrollIntoView({ block: "nearest" });
+    return;
+  }
+  if (btn.dataset.del) { // 台帳項目の削除
+    if (!confirm("この項目を削除しますか？")) return;
+    pushOp({ t: "del", cat: btn.dataset.del, id: btn.dataset.id || null, match: btn.dataset.match || null });
+    return;
+  }
+  if (btn.dataset.submit) { // 追加 or 更新
+    const cat = btn.dataset.submit;
+    const l = LEDGERS.find(x => x.cat === cat);
+    const form = app.querySelector(`.addform[data-form="${cat}"]`);
+    const item = {};
+    for (const f of l.fields) {
+      const raw = form.querySelector(`[data-fld="${f.key}"]`).value.trim();
+      if (f.req && !raw) { alert(f.label + "は必須です。"); return; }
+      if (!raw) continue;
+      item[f.key] = f.num ? Number(raw.replace(/,/g, "")) : raw;
+    }
+    if (editing && editing.cat === cat) {
+      pushOp({ t: "upd", cat, id: editing.id, match: editing.match, item });
+      editing = null;
+    } else {
+      item.id = newId();
+      pushOp({ t: "add", cat, item });
+      openForm = null;
+    }
+    return;
+  }
+  if (btn.id === "scalar-save") { // 固定値の資産額を反映（変更があった項目のみ操作を積む）
+    SCALARS.forEach((s, idx) => {
+      const el = app.querySelector(`[data-scalar="${idx}"]`);
+      if (!el || el.value.trim() === "" || isNaN(Number(el.value))) return;
+      const v = Number(el.value);
+      const cur = s.t === "asset"
+        ? ((d.assets || []).find(a => a.name === s.name) || {}).value || 0
+        : d[s.field] || 0;
+      if (v !== cur) pushOp(s.t === "asset" ? { t: "asset", name: s.name, value: v } : { t: "scalar", field: s.field, value: v });
+    });
+    return;
+  }
+  if (btn.id === "hist-now") { // 今月の総資産を記録（現在値から自動計算）
+    pushOp({ t: "hist", month: thisMonth(), total: totals(d).total });
+    return;
+  }
+  if (btn.id === "hist-add") { // 月・金額を指定して記録
+    const m = document.getElementById("hist-month").value;
+    const t = document.getElementById("hist-total").value;
+    if (!/^\d{4}-\d{2}$/.test(m)) { alert("月をYYYY-MM形式で入力してください。"); return; }
+    if (t.trim() === "" || isNaN(Number(t))) { alert("金額を入力してください。"); return; }
+    pushOp({ t: "hist", month: m, total: Number(t) });
+    return;
+  }
+  if (btn.dataset.histedit) { // 既存の月をフォームに読み込む
+    const h = (d.history || []).find(x => x.month === btn.dataset.histedit);
+    if (!h) return;
+    document.getElementById("hist-month").value = h.month;
+    document.getElementById("hist-total").value = h.total;
+    document.getElementById("hist-total").focus();
+    return;
+  }
+  if (btn.dataset.histdel) {
+    if (!confirm(btn.dataset.histdel + " の記録を削除しますか？")) return;
+    pushOp({ t: "histdel", month: btn.dataset.histdel });
+    return;
+  }
+});
+
+/* ---------- GitHub 同期（LifeLoggerと同方式） ---------- */
+const statusEl = document.getElementById("gh-status");
+const panel = document.getElementById("gh-cfg-panel");
+function getCfg() { try { return JSON.parse(localStorage.getItem(CFG_KEY)) || {}; } catch (e) { return {}; } }
+function setCfg(c) { localStorage.setItem(CFG_KEY, JSON.stringify(c)); }
+function cfgOk(c) { return c && c.owner && c.repo && c.path && c.token; }
+function status(m) { statusEl.textContent = m; }
+function hhmm() { const d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
+const b64enc = s => btoa(unescape(encodeURIComponent(s)));
+const b64dec = s => decodeURIComponent(escape(atob((s || "").replace(/\n/g, ""))));
+
+async function ghGet(c) {
+  // キャッシュから古いsha（版番号）が返るとPUTが409で失敗し続けるため、キャッシュを無効化して常に最新shaを取る。
+  // Cache-Control等のリクエストヘッダーはCORSプリフライトで弾かれるため使わない（LifeLoggerで実証済み）
+  const url = `https://api.github.com/repos/${c.owner}/${c.repo}/contents/${c.path}?ref=${c.branch || "main"}&t=${Date.now()}`;
+  const r = await fetch(url, { cache: "no-store", headers: { Authorization: "Bearer " + c.token, Accept: "application/vnd.github+json" } });
+  if (r.status === 404) return { data: null, sha: null };
+  if (!r.ok) throw new Error("GET " + r.status);
+  const j = await r.json();
+  return { data: JSON.parse(b64dec(j.content)), sha: j.sha };
+}
+async function ghPut(c, obj, sha) {
+  const url = `https://api.github.com/repos/${c.owner}/${c.repo}/contents/${c.path}`;
+  // ダッシュボード側の保存（"dashboard <ISO>"）と区別できるコミットメッセージにする
+  const body = { message: "assets " + new Date().toISOString(), content: b64enc(JSON.stringify(obj, null, 2)), branch: c.branch || "main" };
+  if (sha) body.sha = sha;
+  const r = await fetch(url, { method: "PUT", headers: { Authorization: "Bearer " + c.token, Accept: "application/vnd.github+json", "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  if (!r.ok) throw new Error("PUT " + r.status);
+  return (await r.json()).content.sha;
+}
+
+async function syncOnce(c) {
+  const remote = await ghGet(c);
+  const opsSnap = ops(); // PUT中に積まれた操作を消さないよう、適用した分だけ後で除去する
+  if (!opsSnap.length) { // 変更なし＝読み込みのみ（無駄なコミットを作らない）
+    if (remote.data) DATA = remote.data;
+    return;
+  }
+  const merged = applyOps(remote.data || skeleton(), clone(opsSnap));
+  merged.asOf = today(); // 変更を保存する時だけ更新日を進める
+  ensureIds(merged);
+  await ghPut(c, merged, remote.sha);
+  DATA = merged;
+  removeOps(opsSnap.map(o => o.opId));
+}
+let syncing = false, syncTimer = null;
+async function sync() {
+  const c = getCfg();
+  if (!cfgOk(c)) { status("未設定"); return; }
+  if (syncing) return;
+  syncing = true; status("同期中…");
+  try {
+    // 競合(409)は他端末の更新が原因。最新shaを取り直して数回まで再試行する
+    let done = false, lastErr;
+    for (let i = 0; i < 5 && !done; i++) {
+      try { await syncOnce(c); done = true; }
+      catch (e) { lastErr = e; if (!/\b409\b/.test(e.message)) throw e; }
+    }
+    if (!done) throw lastErr;
+    render(); status("同期完了 " + hhmm());
+  } catch (e) { status("同期失敗: " + e.message); } finally { syncing = false; }
+}
+function scheduleSync() { if (!cfgOk(getCfg())) return; clearTimeout(syncTimer); syncTimer = setTimeout(sync, 2500); }
+
+function fillCfg() {
+  const c = getCfg();
+  document.getElementById("cfg-owner").value = c.owner || "";
+  document.getElementById("cfg-repo").value = c.repo || "Hayahide-Log";
+  document.getElementById("cfg-path").value = c.path || "dashboard.json";
+  document.getElementById("cfg-branch").value = c.branch || "main";
+  document.getElementById("cfg-token").value = c.token || "";
+}
+document.getElementById("gh-config").addEventListener("click", () => { fillCfg(); panel.classList.toggle("open"); });
+document.getElementById("cfg-save").addEventListener("click", () => {
+  setCfg({
+    owner: document.getElementById("cfg-owner").value.trim(),
+    repo: document.getElementById("cfg-repo").value.trim() || "Hayahide-Log",
+    path: document.getElementById("cfg-path").value.trim() || "dashboard.json",
+    branch: document.getElementById("cfg-branch").value.trim() || "main",
+    token: document.getElementById("cfg-token").value.trim(),
+  });
+  panel.classList.remove("open"); sync();
+});
+document.getElementById("cfg-clear").addEventListener("click", () => { localStorage.removeItem(CFG_KEY); fillCfg(); status("設定を削除しました"); });
+document.getElementById("gh-sync").addEventListener("click", sync);
+
+render();
+if (cfgOk(getCfg())) { status("設定済み"); sync(); } else { status("未同期（この端末はまだ設定していません）"); }
+</script>
+</body>
+</html>

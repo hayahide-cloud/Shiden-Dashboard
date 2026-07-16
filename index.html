@@ -465,11 +465,11 @@
       </div>
     </div>
     <div class="sync-cfg" id="gh-cfg-panel">
-      <label>GitHub Private リポジトリの記録（lifelogger）を読み込み推移を表示し、資産データは別リポの dashboard.json に読み書きします。Fine-grained トークン1本に「lifeloggerリポ=Contents読取」＋「資産リポ=Contents読み書き」の権限を付与してください。記録自体は各端末のカウンターページから行います。</label>
+      <label>GitHub Private リポジトリの記録（lifelogger）を読み込み推移を表示し、資産データは同じリポ（Hayahide-Log）の dashboard.json に読み書きします。Fine-grained トークンは Hayahide-Log の Contents読み書きで発行してください。記録はカウンターページ、資産の手入力は asset-input ページから行います。</label>
       <div class="cfg-grid">
         <input id="cfg-owner" placeholder="owner（例: hayahide-cloud）">
         <input id="cfg-repo"  placeholder="lifeloggerリポ（例: Hayahide-Log）">
-        <input id="cfg-asset-repo" placeholder="資産リポ（例: Shiden-Assets）">
+        <input id="cfg-asset-repo" placeholder="資産リポ（通常は空欄=記録リポと同じ）">
         <input id="cfg-path"  placeholder="lifeloggerのpath（例: counters.json）" value="counters.json">
         <input id="cfg-branch" placeholder="branch（例: main）" value="main">
         <input id="cfg-token" type="password" placeholder="Fine-grained token（github_pat_...）">
@@ -831,7 +831,7 @@ const SAMPLE_DATA = {
     { name: "紫電アーカイブ",            priority: "C", status: "計画段階",                  progress: 5 },
     { name: "PSAマッチングシステム",     priority: "C", status: "調査・データ収集",           progress: 10 },
     { name: "五十嵐家アーカイブ計画",    priority: "C", status: "構想段階",                  progress: 5 },
-    { name: "資産ダッシュボード",        priority: "C", status: "v1完成・データ入力待ち",     progress: 50 },
+    { name: "資産ダッシュボード",        priority: "C", status: "v1完成・手入力アプリ（Shiden Assets）稼働", progress: 60 },
     { name: "FANZAアフィリエイトボット", priority: "C", status: "計画段階",                  progress: 5 },
     { name: "ExpenseVBA（経費精算）",    priority: "C", status: "開発中",                    progress: 40 },
     { name: "Shiden-Expense（モバイル版）", priority: "C", status: "開発中",                 progress: 30 },
@@ -1709,9 +1709,10 @@ function renderEverything() {
    実データの読み書き（方式A：非公開リポジトリ dashboard.json）
    このHTML自体には実データを持たない。GitHub同期設定（トークン）を
    入れた端末でのみ dashboard.json を読み込み・保存する。
-   設定は日次カウンターと同じ mtworks_gh_cfg を共用するが、
-   保存先は lifelogger とは別リポ（cfg.assetRepo。例: Shiden-Assets）に分離する。
-   トークン1本で lifelogger リポ=読取、資産リポ=読み書き の両権限を持たせる。
+   保存先は lifelogger の記録と同じ非公開リポ Hayahide-Log（2026-07-16
+   オーナー決定。cfg.assetRepo を設定すれば別リポにも分離できる）。
+   日常の入力はスマホ用の手入力アプリ（asset-input/）が同じファイルに
+   書き込み、ここでは読み込み・表示と「GitHubにデータ保存」を担う。
    ================================================================ */
 (function dashboardData() {
   const DATA_PATH = "dashboard.json";
