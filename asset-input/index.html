@@ -538,13 +538,17 @@ app.addEventListener("click", e => {
       if (!raw) continue;
       item[f.key] = f.num ? Number(raw.replace(/,/g, "")) : raw;
     }
+    // フラグは pushOp（内部で render()）の「前」に消す。後から消すと再描画が
+    // 編集状態のまま走り、フォームが開いたまま残る→もう一度押すと editing=null の
+    // ため追加(add)に化けて重複する（LESSONS_LEARNED 2026-07 参照）
     if (editing && editing.cat === cat) {
-      pushOp({ t: "upd", cat, id: editing.id, match: editing.match, item });
+      const ed = editing;
       editing = null;
+      pushOp({ t: "upd", cat, id: ed.id, match: ed.match, item });
     } else {
       item.id = newId();
+      openForm = null; // 同上: 先に閉じてから描画（連打による二重追加を防ぐ）
       pushOp({ t: "add", cat, item });
-      openForm = null;
     }
     return;
   }
