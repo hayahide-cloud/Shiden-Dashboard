@@ -5,7 +5,7 @@
        - 左下バーの側面は他バーに隠れる位置のため描かない（バー間に暗いくさびが出るのを防ぐ）
        - 上段バーは x=0（下段2本の中央）・白フチ半分(12)持ち上げて、白フチ下端を
          下段の上面フチライン(y=-35)に一致させる（ここがずれると積みが崩れて見える）
-       - 白フチ24 × S=0.45 ≒ 5.4px。バー間の区切りを白フチが兼ねるため稲妻基準(12.5px)より細くしている -->
+       - 白フチ24 × S=0.52 ≒ 6.2px。バー間の区切りを白フチが兼ねるため稲妻基準(12.5px)より細くしている -->
   <defs>
     <radialGradient id="bgr" cx="0.5" cy="0.3" r="1.0">
       <stop offset="0" stop-color="#4d357e"/><stop offset="0.55" stop-color="#35245c"/><stop offset="1" stop-color="#1d1136"/>
@@ -30,7 +30,7 @@
     <path d="M296 36 L138 296 L238 296 L198 476 L396 208 L286 208 L352 36 Z" fill="url(#bolt)" stroke="url(#edge)" stroke-width="40" stroke-linejoin="round"/>
   </g>
   <!-- モチーフ（右下・地金バー∴積み）。描画順: 下段左 → 下段右 → 上段（自然な前後関係） -->
-  <g transform="translate(372 402) scale(0.45) translate(-15 58)" filter="url(#hsh)">
+  <g transform="translate(374 398) scale(0.52) translate(-15 58)" filter="url(#hsh)">
     <g>
       <path d="M-190 35 L-10 35 L-30 -35 L0 -69 L-140 -69 L-170 -35 Z" fill="none" stroke="#fff" stroke-width="24" stroke-linejoin="round"/>
       <path d="M-170 -35 L-30 -35 L0 -69 L-140 -69 Z" fill="#fce38b"/>
