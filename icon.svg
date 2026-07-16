@@ -28,7 +28,7 @@
     <path d="M296 36 L138 296 L238 296 L198 476 L396 208 L286 208 L352 36 Z" fill="url(#bolt)" stroke="url(#edge)" stroke-width="40" stroke-linejoin="round"/>
   </g>
   <!-- モチーフ：棒グラフ（右下・白フチ）。3本の上昇バーを共通ベースラインで連結した1シルエット -->
-  <g transform="translate(375 401) scale(0.42) translate(-256 -250)" filter="url(#hsh)">
+  <g transform="translate(362 401) scale(0.42) translate(-256 -250)" filter="url(#hsh)">
     <path d="M51 376 V288 H129 V376 H217 V206 H295 V376 H383 V124 H461 V376 Z" fill="none" stroke="#fff" stroke-width="60" stroke-linejoin="round"/>
     <path d="M51 376 V288 H129 V376 H217 V206 H295 V376 H383 V124 H461 V376 Z" fill="url(#dash)"/>
   </g>
