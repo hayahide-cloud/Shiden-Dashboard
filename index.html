@@ -502,7 +502,6 @@
   <div class="card">
     <div class="cardhead">
       <h2>金（現物）</h2>
-      <button class="addbtn" data-add="gold">＋ 金を追加</button>
     </div>
     <div style="overflow-x:auto">
       <table class="psa" id="gold-table">
@@ -517,7 +516,6 @@
   <div class="card">
     <div class="cardhead">
       <h2>植物コレクション（アガベ・塊根）</h2>
-      <button class="addbtn" data-add="plant">＋ 株を追加</button>
     </div>
     <div style="overflow-x:auto">
       <table class="psa" id="plant-table">
@@ -584,7 +582,6 @@
   <div class="card">
     <div class="cardhead">
       <h2>デジタルコレクション（Kindle・FANZA・DLsite）</h2>
-      <button class="addbtn" data-add="digital">＋ 作品を追加</button>
     </div>
     <div id="digital-summary" class="digsum"></div>
     <div style="overflow-x:auto">
@@ -601,7 +598,6 @@
   <div class="card">
     <div class="cardhead">
       <h2>サブスクリプション</h2>
-      <button class="addbtn" data-add="sub">＋ サブスクを追加</button>
     </div>
     <div id="sub-summary" class="digsum"></div>
     <div style="overflow-x:auto">
@@ -618,7 +614,6 @@
   <div class="card">
     <div class="cardhead">
       <h2>PSA鑑定カード</h2>
-      <button class="addbtn" data-add="psa">＋ カード追加</button>
     </div>
     <div style="overflow-x:auto">
       <table class="psa" id="psa-table">
@@ -632,8 +627,6 @@
       <span id="data-status" class="gh-status"></span>
       <button class="linkbtn" id="data-save">💾 GitHubにデータ保存</button>
       <button class="linkbtn" id="data-reload">⟳ GitHubから再読込</button>
-      <button class="linkbtn" id="export-btn">この端末で追加した分をJSON出力</button>
-      <button class="linkbtn danger" id="reset-btn">端末の追加分をクリア</button>
     </div>
   </div>
 
@@ -641,7 +634,6 @@
   <div class="card">
     <div class="cardhead">
       <h2>御朱印コレクション</h2>
-      <button class="addbtn" data-add="goshuin">＋ 御朱印を追加</button>
     </div>
     <div id="goshuin-summary" class="digsum"></div>
     <div style="overflow-x:auto">
@@ -657,7 +649,6 @@
   <div class="card">
     <div class="cardhead">
       <h2>ヘルスケア（身体最適化）</h2>
-      <button class="addbtn" data-add="health">＋ 項目を追加</button>
     </div>
     <div id="health"></div>
   </div>
@@ -673,7 +664,6 @@
     <div class="card">
       <div class="cardhead">
         <h2>保有資格</h2>
-        <button class="addbtn" data-add="cert">＋ 資格を追加</button>
       </div>
       <ul class="plain" id="certs"></ul>
     </div>
@@ -681,25 +671,12 @@
     <div class="card">
       <div class="cardhead">
         <h2>スキル</h2>
-        <button class="addbtn" data-add="skill">＋ スキルを追加</button>
       </div>
       <div id="skills"></div>
     </div>
   </div>
 
-  <footer>正本はリポジトリ内の DATA オブジェクト。この端末で追加した分はブラウザに保存され、「JSON出力」で正本へ反映できる — Hayahide</footer>
-</div>
-
-<!-- 追加モーダル -->
-<div class="modal-bg" id="modal-bg">
-  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-    <h3 id="modal-title"></h3>
-    <div id="modal-fields"></div>
-    <div class="modal-actions">
-      <button class="linkbtn" id="modal-cancel">キャンセル</button>
-      <button class="addbtn" id="modal-save">追加する</button>
-    </div>
-  </div>
+  <footer>正本は非公開リポジトリの dashboard.json。資産の追加・編集は Shiden Assets（手入力アプリ）で行い、このダッシュボードは表示専用 — Hayahide</footer>
 </div>
 
 <script>
@@ -1232,180 +1209,6 @@ function renderSkills() {
         `<span class="chip">${s.name}<span class="lv">${"★".repeat(Math.max(1, Math.min(5, s.level || 1)))}</span></span>`).join("")}</div>
     </div>`).join("");
 }
-
-/* ================================================================
-   資産の追加（モーダル）・JSON出力・クリア
-   ================================================================ */
-// 各種類のフォーム定義。key=DATAのフィールド名, req=必須, num=数値
-const FORMS = {
-  psa: {
-    title: "PSA鑑定カードを追加", target: "psaCards",
-    fields: [
-      { key: "name",  label: "カード名",   req: true },
-      { key: "grade", label: "グレード",   placeholder: "PSA10", def: "PSA10" },
-      { key: "cert",  label: "鑑定番号",   hint: "スラブに印字された番号（任意）" },
-      { key: "value", label: "推定時価（円）", req: true, num: true },
-      { key: "cost",  label: "取得価格（円）", num: true, hint: "任意" },
-      { key: "acquired", label: "取得年月", placeholder: "2026-07", hint: "任意" },
-    ],
-  },
-  gold: {
-    title: "金（現物）を追加", target: "goldHoldings",
-    fields: [
-      { key: "name",   label: "品目",      req: true, placeholder: "地金 100g" },
-      { key: "weight", label: "重量（g）", num: true, hint: "任意" },
-      { key: "value",  label: "時価（円）", req: true, num: true },
-      { key: "cost",   label: "取得価格（円）", num: true, hint: "任意" },
-      { key: "acquired", label: "取得年月", placeholder: "2026-07", hint: "任意" },
-    ],
-  },
-  plant: {
-    title: "植物（アガベ・塊根）を追加", target: "plants",
-    fields: [
-      { key: "name",   label: "品種名",    req: true, placeholder: "アガベ チタノタ 白鯨" },
-      { key: "demand", label: "需要（高/中/低）", placeholder: "高", def: "中", hint: "高・中・低のいずれか" },
-      { key: "value",  label: "相場・時価（円）", req: true, num: true },
-      { key: "cost",   label: "取得価格（円）", num: true, hint: "任意" },
-      { key: "acquired", label: "取得年月", placeholder: "2026-07", hint: "任意" },
-      { key: "note",   label: "相場メモ", hint: "子株の有無・売却検討など（任意）" },
-    ],
-  },
-  digital: {
-    title: "デジタル作品を追加", target: "digital",
-    fields: [
-      { key: "platform", label: "プラットフォーム", req: true, def: "Kindle", hint: "Kindle / FANZA / DLsite など" },
-      { key: "title",    label: "タイトル", req: true },
-      { key: "price",    label: "購入額（円）", num: true, hint: "任意" },
-      { key: "acquired", label: "取得年月", placeholder: "2026-07", hint: "任意" },
-      { key: "note",     label: "メモ", hint: "任意" },
-    ],
-  },
-  health: {
-    title: "ヘルスケア項目を追加", target: "health",
-    fields: [
-      { key: "name",     label: "項目・不調", req: true, placeholder: "睡眠の質" },
-      { key: "status",   label: "状態", def: "改善中", hint: "改善中 / 経過観察 / 良好" },
-      { key: "progress", label: "進捗（0〜100）", num: true, def: "30" },
-      { key: "note",     label: "メモ・対策", hint: "任意" },
-    ],
-  },
-  sub: {
-    title: "サブスクリプションを追加", target: "subscriptions",
-    fields: [
-      { key: "name",     label: "サービス名", req: true, placeholder: "Netflix" },
-      { key: "amount",   label: "金額（円）", req: true, num: true },
-      { key: "cycle",    label: "周期（月/年）", def: "月", hint: "月 または 年" },
-      { key: "category", label: "分類", placeholder: "動画", hint: "任意" },
-      { key: "next",     label: "次回更新日", placeholder: "2026-08-01", hint: "任意" },
-    ],
-  },
-  goshuin: {
-    title: "御朱印を追加", target: "goshuin",
-    fields: [
-      { key: "name", label: "神社・寺の名前", req: true, placeholder: "明治神宮" },
-      { key: "area", label: "地域（都道府県）", placeholder: "東京都", hint: "任意" },
-      { key: "date", label: "参拝日", placeholder: "2026-07-12", hint: "任意" },
-      { key: "note", label: "メモ", hint: "任意" },
-    ],
-  },
-  cert: {
-    title: "資格を追加", target: "certifications",
-    fields: [
-      { key: "name", label: "資格名", req: true, placeholder: "基本情報技術者" },
-      { key: "date", label: "取得年月", placeholder: "2026-07", hint: "任意" },
-    ],
-  },
-  skill: {
-    title: "スキルを追加", target: "skills",
-    fields: [
-      { key: "group", label: "分類", req: true, placeholder: "開発", hint: "既存の分類名と揃えると同じ枠にまとまる" },
-      { key: "name",  label: "スキル名", req: true, placeholder: "TypeScript" },
-      { key: "level", label: "レベル（1〜5）", req: true, num: true, def: "3" },
-    ],
-  },
-};
-
-const modalBg = document.getElementById("modal-bg");
-let activeForm = null;
-
-function openModal(kind) {
-  activeForm = FORMS[kind];
-  document.getElementById("modal-title").textContent = activeForm.title;
-  document.getElementById("modal-fields").innerHTML = activeForm.fields.map(f => `
-    <div class="field">
-      <label for="fld-${f.key}">${f.label}${f.req ? " *" : ""}</label>
-      <input id="fld-${f.key}" type="${f.num ? "number" : "text"}"
-             value="${f.def || ""}" placeholder="${f.placeholder || ""}"
-             inputmode="${f.num ? "numeric" : "text"}">
-      ${f.hint ? `<div class="hint">${f.hint}</div>` : ""}
-    </div>`).join("");
-  modalBg.classList.add("open");
-  const first = document.getElementById("fld-" + activeForm.fields[0].key);
-  if (first) first.focus();
-}
-function closeModal() { modalBg.classList.remove("open"); activeForm = null; }
-
-function saveModal() {
-  if (!activeForm) return;
-  const obj = {};
-  for (const f of activeForm.fields) {
-    const raw = document.getElementById("fld-" + f.key).value.trim();
-    if (f.req && !raw) { alert(f.label + "は必須です。"); return; }
-    if (!raw) continue;
-    obj[f.key] = f.num ? Number(raw.replace(/,/g, "")) : raw;
-  }
-  added[activeForm.target].push(obj);
-  saveAdd(added);
-  closeModal();
-  renderAll();
-}
-
-// 端末追加分をJSON（DATAへ貼り付けやすい形）で出力
-function exportAdditions() {
-  const note = document.getElementById("add-note");
-  const has = added.psaCards.length || added.goldHoldings.length || added.plants.length
-    || added.digital.length || added.subscriptions.length || added.health.length || added.goshuin.length
-    || added.certifications.length || added.skills.length;
-  if (!has) {
-    note.style.display = "block";
-    note.innerHTML = "この端末で追加した分はまだありません。";
-    return;
-  }
-  const fmt = arr => arr.map(o => "    " + JSON.stringify(o)
-    .replace(/"([^"]+)":/g, "$1: ").replace(/,/g, ", ")).join(",\n");
-  let out = "";
-  if (added.psaCards.length)     out += "// psaCards に追記:\n" + fmt(added.psaCards) + "\n\n";
-  if (added.goldHoldings.length) out += "// goldHoldings に追記:\n" + fmt(added.goldHoldings) + "\n\n";
-  if (added.plants.length)         out += "// plants に追記:\n" + fmt(added.plants) + "\n\n";
-  if (added.digital.length)        out += "// digital に追記:\n" + fmt(added.digital) + "\n\n";
-  if (added.subscriptions.length)  out += "// subscriptions に追記:\n" + fmt(added.subscriptions) + "\n\n";
-  if (added.health.length)         out += "// health に追記:\n" + fmt(added.health) + "\n\n";
-  if (added.goshuin.length)        out += "// goshuin に追記:\n" + fmt(added.goshuin) + "\n\n";
-  if (added.certifications.length) out += "// certifications に追記:\n" + fmt(added.certifications) + "\n\n";
-  if (added.skills.length)         out += "// skills（各分類の items へ）:\n" + fmt(added.skills);
-  note.style.display = "block";
-  note.innerHTML = "以下をリポジトリの <code>dashboard/index.html</code> の該当配列に貼り付けると正本へ反映されます。反映後は「端末の追加分をクリア」で二重計上を防いでください。" +
-    `<textarea readonly onclick="this.select()">${out}</textarea>`;
-}
-
-function resetAdditions() {
-  if (!confirm("この端末で追加した分をすべて削除します。正本（リポジトリ）には影響しません。よろしいですか？")) return;
-  added.psaCards = []; added.goldHoldings = []; added.plants = []; added.digital = [];
-  added.subscriptions = []; added.health = []; added.goshuin = []; added.certifications = []; added.skills = [];
-  saveAdd(added);
-  document.getElementById("add-note").style.display = "none";
-  renderAll();
-}
-
-// イベント配線
-document.querySelectorAll(".addbtn[data-add]").forEach(b =>
-  b.addEventListener("click", () => openModal(b.dataset.add)));
-document.getElementById("modal-cancel").addEventListener("click", closeModal);
-document.getElementById("modal-save").addEventListener("click", saveModal);
-modalBg.addEventListener("click", e => { if (e.target === modalBg) closeModal(); });
-document.addEventListener("keydown", e => { if (e.key === "Escape") closeModal(); });
-document.getElementById("export-btn").addEventListener("click", exportAdditions);
-document.getElementById("reset-btn").addEventListener("click", resetAdditions);
 
 /* ================================================================
    子株価格 見積もりツール
