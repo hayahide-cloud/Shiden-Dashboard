@@ -1511,7 +1511,7 @@ document.getElementById("reset-btn").addEventListener("click", resetAdditions);
   const MOODS = [{ v: 1, e: "😣" }, { v: 2, e: "😕" }, { v: 3, e: "😐" }, { v: 4, e: "🙂" }, { v: 5, e: "😄" }];
 
   /* ---- 推移表示用の集計・チャート（ダッシュボードは記録せず表示のみ） ---- */
-  const TREND_DAYS = 30;
+  const TREND_DAYS = 7;
   // 直近n日の日付配列（古い→新しい）
   function lastNDates(n) {
     const base = new Date(); base.setHours(0, 0, 0, 0);
@@ -1551,7 +1551,9 @@ document.getElementById("reset-btn").addEventListener("click", resetAdditions);
   // 1〜5スケールの折れ線（SVG）。記録のない日は線を切る
   function svgLine(series, color) {
     const W = 280, H = 30, lo = 1, hi = 5;
-    const xs = i => series.length > 1 ? i / (series.length - 1) * W : W / 2;
+    // 棒グラフ(svgBars)と同じ「バー中心」に点を置き、回数の棒と量/質の折れ線を縦に揃える
+    const n = series.length, gap = 1.2, bw = (W - (n - 1) * gap) / n;
+    const xs = i => i * (bw + gap) + bw / 2;
     const ys = v => (H - 3) - (v - lo) / (hi - lo) * (H - 6);
     let d = "", dots = "", started = false;
     series.forEach((s, i) => {
