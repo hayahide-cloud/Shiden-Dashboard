@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Shiden Dashboard</title>
+<link rel="icon" type="image/svg+xml" href="icon.svg">
 <style>
   /* ================================================================
      Shiden Dashboard — ダーク×紫テーマ
@@ -56,12 +57,10 @@
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
   .brand .sub { color: var(--muted); font-size: 13px; }
-  .brand::before {
-    content: "";
-    display: inline-block; width: 10px; height: 22px;
-    background: linear-gradient(180deg, var(--accent-hi), var(--accent-deep));
-    border-radius: 3px; align-self: center;
-    box-shadow: 0 0 14px rgba(144,133,233,0.55);
+  /* 紫電（雷）アイコン。favicon と同じ icon.svg を使う */
+  .brand .brandmark {
+    width: 28px; height: 28px; align-self: center; border-radius: 7px;
+    box-shadow: 0 0 14px rgba(144,133,233,0.50);
   }
   .asof { color: var(--muted); font-size: 12px; margin-top: 4px; }
   .applinks { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 14px; }
@@ -430,6 +429,7 @@
 
   <header>
     <div class="brand">
+      <img class="brandmark" src="icon.svg" alt="紫電" width="28" height="28">
       <h1>Shiden Dashboard</h1>
       <span class="sub">Hayahide — Personal Asset Overview</span>
     </div>
