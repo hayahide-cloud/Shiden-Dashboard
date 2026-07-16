@@ -1,7 +1,11 @@
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
   <!-- Shiden Assets アイコン（正本）。docs/SHIDEN_ICON_GUIDE.md 準拠:
-       稲妻マスター＋パターンB（右下の白フチ小モチーフ）。モチーフは「コイン（¥）」＝資産。
-       白フチは SW=60 × S=0.42 ≒ 12.6px で稲妻の白フチ基準(12.5px)に一致。 -->
+       稲妻マスター＋パターンB（右下モチーフ）。モチーフは「地金バーの∴積み」（斜め上視点・左右対称の積み）。
+       - 各バー: 上面(明)＋正面(金グラデ)＋右側面(暗) の3面で立体感を表現。奥行きは右上方向(+30,-34)
+       - 左下バーの側面は他バーに隠れる位置のため描かない（バー間に暗いくさびが出るのを防ぐ）
+       - 上段バーは x=0（下段2本の中央）・白フチ半分(12)持ち上げて、白フチ下端を
+         下段の上面フチライン(y=-35)に一致させる（ここがずれると積みが崩れて見える）
+       - 白フチ24 × S=0.45 ≒ 5.4px。バー間の区切りを白フチが兼ねるため稲妻基準(12.5px)より細くしている -->
   <defs>
     <radialGradient id="bgr" cx="0.5" cy="0.3" r="1.0">
       <stop offset="0" stop-color="#4d357e"/><stop offset="0.55" stop-color="#35245c"/><stop offset="1" stop-color="#1d1136"/>
@@ -12,9 +16,9 @@
     <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#a855f7"/><stop offset="1" stop-color="#6d28d9"/>
     </linearGradient>
-    <!-- コインの塗り：無彩色（淡い紫グレー。ガイド§13「モチーフは無彩色」準拠） -->
-    <linearGradient id="coin" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#f0edf7"/><stop offset="1" stop-color="#b9b0cf"/>
+    <!-- 地金の正面（金グラデ）。上面は #fce38b・側面は #b97f05 の固定色 -->
+    <linearGradient id="gfront" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f4c04a"/><stop offset="1" stop-color="#d99a06"/>
     </linearGradient>
     <filter id="sh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#7c3aed" flood-opacity="0.6"/></filter>
     <filter id="hsh" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/></filter>
@@ -25,16 +29,24 @@
     <path d="M296 36 L138 296 L238 296 L198 476 L396 208 L286 208 L352 36 Z" fill="none" stroke="#f5f2fa" stroke-width="72" stroke-linejoin="round"/>
     <path d="M296 36 L138 296 L238 296 L198 476 L396 208 L286 208 L352 36 Z" fill="url(#bolt)" stroke="url(#edge)" stroke-width="40" stroke-linejoin="round"/>
   </g>
-  <!-- モチーフ（右下・白フチ付きコイン。¥は暗紫のストロークで刻印） -->
-  <g transform="translate(391 401) scale(0.42) translate(-256 -256)" filter="url(#hsh)">
-    <circle cx="256" cy="256" r="170" fill="none" stroke="#fff" stroke-width="60"/>
-    <circle cx="256" cy="256" r="170" fill="url(#coin)"/>
-    <g fill="none" stroke="#3b2b63" stroke-width="32" stroke-linecap="round">
-      <path d="M198 152 L256 246"/>
-      <path d="M314 152 L256 246"/>
-      <path d="M256 246 V354"/>
-      <path d="M202 276 H310"/>
-      <path d="M202 318 H310"/>
+  <!-- モチーフ（右下・地金バー∴積み）。描画順: 下段左 → 下段右 → 上段（自然な前後関係） -->
+  <g transform="translate(372 402) scale(0.45) translate(-15 58)" filter="url(#hsh)">
+    <g>
+      <path d="M-190 35 L-10 35 L-30 -35 L0 -69 L-140 -69 L-170 -35 Z" fill="none" stroke="#fff" stroke-width="24" stroke-linejoin="round"/>
+      <path d="M-170 -35 L-30 -35 L0 -69 L-140 -69 Z" fill="#fce38b"/>
+      <path d="M-190 35 L-10 35 L-30 -35 L-170 -35 Z" fill="url(#gfront)"/>
+    </g>
+    <g>
+      <path d="M10 35 L190 35 L220 1 L200 -69 L60 -69 L30 -35 Z" fill="none" stroke="#fff" stroke-width="24" stroke-linejoin="round"/>
+      <path d="M30 -35 L170 -35 L200 -69 L60 -69 Z" fill="#fce38b"/>
+      <path d="M10 35 L190 35 L170 -35 L30 -35 Z" fill="url(#gfront)"/>
+      <path d="M190 35 L220 1 L200 -69 L170 -35 Z" fill="#b97f05"/>
+    </g>
+    <g>
+      <path d="M-90 -47 L90 -47 L120 -81 L100 -151 L-40 -151 L-70 -117 Z" fill="none" stroke="#fff" stroke-width="24" stroke-linejoin="round"/>
+      <path d="M-70 -117 L70 -117 L100 -151 L-40 -151 Z" fill="#fce38b"/>
+      <path d="M-90 -47 L90 -47 L70 -117 L-70 -117 Z" fill="url(#gfront)"/>
+      <path d="M90 -47 L120 -81 L100 -151 L70 -117 Z" fill="#b97f05"/>
     </g>
   </g>
 </svg>
