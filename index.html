@@ -879,10 +879,10 @@ let DATA = SAMPLE_DATA;
    描画処理 — DATA を読んでDOMを構築する。編集不要。
    ================================================================ */
 const yen = n => "¥" + n.toLocaleString("ja-JP");
-const fmtDelta = (d, cur) => `<span class="${d >= 0 ? "gain" : "loss"}">${d >= 0 ? "+" : "−"}${cur === "USD" ? "$" : ""}${Math.abs(d).toLocaleString(cur === "USD" ? "en-US" : "ja-JP")}</span>`;
-// 通貨対応: currency:"USD" の項目はドル表示、合計・タイルは usdJpy レートで円換算する
+const fmtDelta = (d, cur) => `<span class="${d >= 0 ? "gain" : "loss"}">${d >= 0 ? "+" : "−"}${cur === "USD" ? "$" : ""}${Math.abs(d).toLocaleString(cur === "USD" ? "en-US" : "ja-JP", { maximumFractionDigits: 2 })}</span>`;
+// 通貨対応: currency:"USD" の項目はドル表示（小数2桁まで）、合計・タイルは usdJpy レートで円換算する
 const fx = () => DATA.usdJpy || 150;
-const money = (n, cur) => cur === "USD" ? "$" + Number(n || 0).toLocaleString("en-US") : yen(n || 0);
+const money = (n, cur) => cur === "USD" ? "$" + Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: 2 }) : yen(n || 0);
 const asJpy = (n, cur) => Math.round(Number(n || 0) * (cur === "USD" ? fx() : 1));
 
 /* ----------------------------------------------------------------
