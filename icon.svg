@@ -13,9 +13,10 @@
     <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#a855f7"/><stop offset="1" stop-color="#6d28d9"/>
     </linearGradient>
-    <!-- 棒グラフの塗り：無彩色（背景の紫・稲妻の金とケンカさせない） -->
-    <linearGradient id="dash" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#f5f2fa"/><stop offset="1" stop-color="#c7c1d6"/>
+    <!-- 棒グラフの塗り：ティール上昇グラデ（左=短いバー暗 → 右=高いバー明。資産の成長を色でも表現）。
+         ガイド§13の「モチーフ無彩色」からの意図的な逸脱（オーナー決定）。 -->
+    <linearGradient id="dash" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#2a6f6a"/><stop offset="1" stop-color="#34e0cf"/>
     </linearGradient>
     <filter id="sh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#7c3aed" flood-opacity="0.6"/></filter>
     <filter id="hsh" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/></filter>
