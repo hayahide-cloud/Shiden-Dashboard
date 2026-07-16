@@ -625,7 +625,6 @@
     <div class="addnote" id="add-note" style="display:none"></div>
     <div class="addactions">
       <span id="data-status" class="gh-status"></span>
-      <button class="linkbtn" id="data-save">💾 GitHubにデータ保存</button>
       <button class="linkbtn" id="data-reload">⟳ GitHubから再読込</button>
     </div>
   </div>
@@ -855,7 +854,6 @@ function loadAdd() {
   try { return Object.assign(emptyAdd(), JSON.parse(localStorage.getItem(LS_KEY)) || {}); }
   catch (e) { return emptyAdd(); }
 }
-function saveAdd(a) { localStorage.setItem(LS_KEY, JSON.stringify(a)); }
 const added = loadAdd();
 
 // マージ後の台帳（DATA正本 ＋ 端末追加分）
@@ -1521,7 +1519,6 @@ function renderEverything() {
   function ready(c) { return c && c.owner && assetRepo(c) && c.token; }
   function dstatus(m) { if (st) st.textContent = m; }
   function hm() { const d = new Date(); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
-  const enc = s => btoa(unescape(encodeURIComponent(s)));
   const dec = s => decodeURIComponent(escape(atob((s || "").replace(/\n/g, ""))));
 
   async function get(c) {
@@ -1532,36 +1529,6 @@ function renderEverything() {
     const j = await r.json();
     return { data: JSON.parse(dec(j.content)), sha: j.sha };
   }
-  async function put(c, obj, sha) {
-    const url = `https://api.github.com/repos/${c.owner}/${assetRepo(c)}/contents/${DATA_PATH}`;
-    const body = { message: "dashboard " + new Date().toISOString(), content: enc(JSON.stringify(obj, null, 2)), branch: c.branch || "main" };
-    if (sha) body.sha = sha;
-    const r = await fetch(url, { method: "PUT", headers: { Authorization: "Bearer " + c.token, Accept: "application/vnd.github+json", "Content-Type": "application/json" }, body: JSON.stringify(body) });
-    if (!r.ok) throw new Error("PUT " + r.status);
-    return (await r.json()).content.sha;
-  }
-
-  // 追加分（localStorage）を DATA に畳み込んだ完全なデータを作る
-  function mergedSkills() {
-    const groups = DATA.skills.map(g => ({ group: g.group, items: g.items.slice() }));
-    added.skills.forEach(s => {
-      let g = groups.find(x => x.group === s.group);
-      if (!g) { g = { group: s.group || "その他", items: [] }; groups.push(g); }
-      g.items.push({ name: s.name, level: s.level });
-    });
-    return groups;
-  }
-  function fullData() {
-    return Object.assign({}, DATA, {
-      psaCards: psaLedger(), goldHoldings: goldLedger(), plants: plantLedger(),
-      digital: digitalLedger(), subscriptions: subLedger(), goshuin: goshuinLedger(),
-      certifications: DATA.certifications.concat(added.certifications), skills: mergedSkills(),
-    });
-  }
-  function clearAdded() {
-    Object.keys(added).forEach(k => { if (Array.isArray(added[k])) added[k].length = 0; });
-    saveAdd(added);
-  }
 
   async function load() {
     const c = ghCfg();
@@ -1570,24 +1537,10 @@ function renderEverything() {
     try {
       const g = await get(c);
       if (g.data) { DATA = g.data; renderEverything(); dstatus("データ読込 " + hm()); }
-      else { dstatus("保存データなし（サンプル表示）。「GitHubにデータ保存」で作成"); }
+      else { dstatus("保存データなし（サンプル表示）。Shiden Assets で資産を登録してください"); }
     } catch (e) { dstatus("取得失敗: " + e.message); }
   }
-  async function saveData() {
-    const c = ghCfg();
-    if (!ready(c)) { alert("先に日次カウンターの「⚙️ 同期設定」でGitHubトークンを設定してください。"); return; }
-    dstatus("保存中…");
-    try {
-      const full = fullData();
-      let g;
-      try { g = await get(c); } catch (e) { g = { sha: null }; }
-      await put(c, full, g.sha);
-      DATA = full; clearAdded(); renderEverything();
-      dstatus("保存完了 " + hm());
-    } catch (e) { dstatus("保存失敗: " + e.message); }
-  }
 
-  document.getElementById("data-save").addEventListener("click", saveData);
   document.getElementById("data-reload").addEventListener("click", load);
   // 初期表示（サンプル）→ 設定があれば実データで上書き
   renderEverything();
