@@ -717,7 +717,7 @@ const SAMPLE_DATA = {
   assets: [
     { name: "現金・預金",   value: 3200000, color: "--s1", note: "普通・定期の合計" },
     { name: "金（現物）",   value: "auto",  color: "--s2", note: "地金・コインの時価合計" },
-    { name: "土地・不動産", value: 0,       color: "--s3", note: "評価額ベース" },
+    { name: "土地・不動産", value: "auto",  color: "--s3", note: "土地台帳の評価額合計" },
     { name: "コレクション", value: "auto",  color: "--s4", note: "PSA鑑定カード＋その他の合計" },
     { name: "その他",       value: "auto",  color: "--s5", note: "植物コレクション＋機材等の合計" },
   ],
@@ -740,6 +740,9 @@ const SAMPLE_DATA = {
     { name: "（サンプル）地金 100g",   weight: 100, value: 1500000, cost: 900000, acquired: "2024-06" },
     { name: "（サンプル）金貨 1oz",    weight: 31,  value: 480000,  cost: 350000, acquired: "2025-03" },
   ],
+
+  // 土地・不動産台帳。合計が「土地・不動産」タイルへ自動集計される（入力は asset-input アプリ）
+  landHoldings: [],
 
   // 植物コレクション台帳（アガベ・塊根）（サンプル — 実際の保有に書き換える）
   // demand は需要ランク（高/中/低）、value は現在の相場（時価）、note は相場メモ
@@ -893,10 +896,12 @@ document.getElementById("asof").textContent = "更新日: " + DATA.asOf;
 function renderAssets() {
   const psaTotal   = psaLedger().reduce((s, c) => s + c.value, 0);
   const goldTotal  = goldLedger().reduce((s, g) => s + g.value, 0);
+  const landTotal  = (DATA.landHoldings || []).reduce((s, l) => s + (l.value || 0), 0);
   const plantTotal = plantLedger().reduce((s, p) => s + p.value, 0);
   // auto項目を解決したビュー用配列を作る（DATA.assets自体は書き換えない）
   const autoVal = name => {
     if (name.startsWith("金"))       return goldTotal;
+    if (name.startsWith("土地"))   return landTotal;
     if (name.startsWith("コレク")) return psaTotal + DATA.collectionOther;
     if (name.startsWith("その他")) return plantTotal + DATA.otherMisc;
     return 0;
