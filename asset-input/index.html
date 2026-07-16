@@ -309,7 +309,11 @@ function findIndex(arr, op) {
 function applyOps(data, opList) {
   opList.forEach(op => {
     if (op.t === "add") {
-      (data[op.cat] = data[op.cat] || []).push(clone(op.item));
+      // 冪等にする: 同じidが既に存在する場合は置き換え（PUT成功後に応答だけ失われ、
+      // 次回同期で同じ追加操作が再適用されても重複しないため）
+      const arr = (data[op.cat] = data[op.cat] || []);
+      const i = op.item.id ? arr.findIndex(x => x.id === op.item.id) : -1;
+      if (i >= 0) arr[i] = clone(op.item); else arr.push(clone(op.item));
     } else if (op.t === "upd") {
       const arr = data[op.cat] || [], i = findIndex(arr, op);
       if (i >= 0) arr[i] = Object.assign({ id: arr[i].id || op.id }, clone(op.item));
