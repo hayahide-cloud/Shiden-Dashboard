@@ -754,6 +754,10 @@ const SAMPLE_DATA = {
   // 土地・不動産台帳。合計が「土地・不動産」タイルへ自動集計される（入力は asset-input アプリ）
   landHoldings: [],
 
+  // 為替レート（1ドル＝円）。currency:"USD" の項目を円換算するのに使う。
+  // 手動更新（asset-input の「手動更新の資産額」で設定。自動取得はしない）
+  usdJpy: 150,
+
   // 植物コレクション台帳（アガベ・塊根）（サンプル — 実際の保有に書き換える）
   // demand は需要ランク（高/中/低）、value は現在の相場（時価）、note は相場メモ
   plants: [
@@ -875,7 +879,11 @@ let DATA = SAMPLE_DATA;
    描画処理 — DATA を読んでDOMを構築する。編集不要。
    ================================================================ */
 const yen = n => "¥" + n.toLocaleString("ja-JP");
-const fmtDelta = d => `<span class="${d >= 0 ? "gain" : "loss"}">${d >= 0 ? "+" : "−"}${Math.abs(d).toLocaleString("ja-JP")}</span>`;
+const fmtDelta = (d, cur) => `<span class="${d >= 0 ? "gain" : "loss"}">${d >= 0 ? "+" : "−"}${cur === "USD" ? "$" : ""}${Math.abs(d).toLocaleString(cur === "USD" ? "en-US" : "ja-JP")}</span>`;
+// 通貨対応: currency:"USD" の項目はドル表示、合計・タイルは usdJpy レートで円換算する
+const fx = () => DATA.usdJpy || 150;
+const money = (n, cur) => cur === "USD" ? "$" + Number(n || 0).toLocaleString("en-US") : yen(n || 0);
+const asJpy = (n, cur) => Math.round(Number(n || 0) * (cur === "USD" ? fx() : 1));
 
 /* ----------------------------------------------------------------
    端末側の追加分（localStorage）
@@ -904,10 +912,10 @@ document.getElementById("asof").textContent = "更新日: " + DATA.asOf;
 
 // 総資産・タイル・構成バーを（再）描画する
 function renderAssets() {
-  const psaTotal   = psaLedger().reduce((s, c) => s + c.value, 0);
-  const goldTotal  = goldLedger().reduce((s, g) => s + g.value, 0);
-  const landTotal  = (DATA.landHoldings || []).reduce((s, l) => s + (l.value || 0), 0);
-  const plantTotal = plantLedger().reduce((s, p) => s + p.value, 0);
+  const psaTotal   = psaLedger().reduce((s, c) => s + asJpy(c.value, c.currency), 0);
+  const goldTotal  = goldLedger().reduce((s, g) => s + asJpy(g.value, g.currency), 0);
+  const landTotal  = (DATA.landHoldings || []).reduce((s, l) => s + asJpy(l.value, l.currency), 0);
+  const plantTotal = plantLedger().reduce((s, p) => s + asJpy(p.value, p.currency), 0);
   // auto項目を解決したビュー用配列を作る（DATA.assets自体は書き換えない）
   const autoVal = name => {
     if (name.startsWith("金"))       return goldTotal;
@@ -1029,15 +1037,15 @@ function renderPsa() {
       <td><span class="grade">${c.grade}</span></td>
       <td class="dim">${c.cert || "—"}</td>
       <td class="dim">${c.acquired || ""}</td>
-      <td class="num dim">${c.cost ? yen(c.cost) : "—"}</td>
-      <td class="num">${yen(c.value)}</td>
-      <td class="num">${c.cost ? fmtDelta(c.value - c.cost) : "—"}</td>
+      <td class="num dim">${c.cost ? money(c.cost, c.currency) : "—"}</td>
+      <td class="num">${money(c.value, c.currency)}</td>
+      <td class="num">${c.cost ? fmtDelta(c.value - c.cost, c.currency) : "—"}</td>
     </tr>`).join("");
-  const valTotal = rows.reduce((s, c) => s + c.value, 0);
-  const costTotal = rows.reduce((s, c) => s + (c.cost || 0), 0);
+  const valTotal = rows.reduce((s, c) => s + asJpy(c.value, c.currency), 0);
+  const costTotal = rows.reduce((s, c) => s + asJpy(c.cost || 0, c.currency), 0);
   tfoot.innerHTML = `
     <tr>
-      <td>合計（${rows.length}枚）</td><td></td><td></td><td></td>
+      <td>合計（${rows.length}枚・円換算）</td><td></td><td></td><td></td>
       <td class="num dim">${yen(costTotal)}</td>
       <td class="num">${yen(valTotal)}</td>
       <td class="num">${fmtDelta(valTotal - costTotal)}</td>
@@ -1054,16 +1062,16 @@ function renderGold() {
       <td>${g.name}</td>
       <td class="num dim">${g.weight ? g.weight.toLocaleString("ja-JP") : "—"}</td>
       <td class="dim">${g.acquired || ""}</td>
-      <td class="num dim">${g.cost ? yen(g.cost) : "—"}</td>
-      <td class="num">${yen(g.value)}</td>
-      <td class="num">${g.cost ? fmtDelta(g.value - g.cost) : "—"}</td>
+      <td class="num dim">${g.cost ? money(g.cost, g.currency) : "—"}</td>
+      <td class="num">${money(g.value, g.currency)}</td>
+      <td class="num">${g.cost ? fmtDelta(g.value - g.cost, g.currency) : "—"}</td>
     </tr>`).join("");
-  const valTotal = rows.reduce((s, g) => s + g.value, 0);
-  const costTotal = rows.reduce((s, g) => s + (g.cost || 0), 0);
+  const valTotal = rows.reduce((s, g) => s + asJpy(g.value, g.currency), 0);
+  const costTotal = rows.reduce((s, g) => s + asJpy(g.cost || 0, g.currency), 0);
   const wTotal = rows.reduce((s, g) => s + (g.weight || 0), 0);
   tfoot.innerHTML = `
     <tr>
-      <td>合計（${rows.length}点）</td>
+      <td>合計（${rows.length}点・円換算）</td>
       <td class="num dim">${wTotal.toLocaleString("ja-JP")}</td><td></td>
       <td class="num dim">${yen(costTotal)}</td>
       <td class="num">${yen(valTotal)}</td>
@@ -1082,16 +1090,16 @@ function renderPlants() {
       <td>${p.name}</td>
       <td>${p.demand ? `<span class="demand ${dCls(p.demand)}">${p.demand}</span>` : "—"}</td>
       <td class="dim">${p.acquired || ""}</td>
-      <td class="num dim">${p.cost ? yen(p.cost) : "—"}</td>
-      <td class="num">${yen(p.value)}</td>
-      <td class="num">${p.cost ? fmtDelta(p.value - p.cost) : "—"}</td>
+      <td class="num dim">${p.cost ? money(p.cost, p.currency) : "—"}</td>
+      <td class="num">${money(p.value, p.currency)}</td>
+      <td class="num">${p.cost ? fmtDelta(p.value - p.cost, p.currency) : "—"}</td>
       <td class="memo">${p.note || ""}</td>
     </tr>`).join("");
-  const valTotal = rows.reduce((s, p) => s + p.value, 0);
-  const costTotal = rows.reduce((s, p) => s + (p.cost || 0), 0);
+  const valTotal = rows.reduce((s, p) => s + asJpy(p.value, p.currency), 0);
+  const costTotal = rows.reduce((s, p) => s + asJpy(p.cost || 0, p.currency), 0);
   tfoot.innerHTML = `
     <tr>
-      <td>合計（${rows.length}株）</td><td></td><td></td>
+      <td>合計（${rows.length}株・円換算）</td><td></td><td></td>
       <td class="num dim">${yen(costTotal)}</td>
       <td class="num">${yen(valTotal)}</td>
       <td class="num">${fmtDelta(valTotal - costTotal)}</td>
@@ -1108,7 +1116,7 @@ function renderDigital() {
   rows.forEach(d => {
     const k = d.platform || "その他";
     byPlat[k] = byPlat[k] || { count: 0, spend: 0 };
-    byPlat[k].count++; byPlat[k].spend += (d.price || 0);
+    byPlat[k].count++; byPlat[k].spend += asJpy(d.price || 0, d.currency);
   });
   document.getElementById("digital-summary").innerHTML = Object.entries(byPlat).map(([p, s]) => `
     <div class="box">
@@ -1124,13 +1132,13 @@ function renderDigital() {
       <td><span class="plat ${platCls(d.platform)}">${d.platform || "—"}</span></td>
       <td>${d.title}</td>
       <td class="dim">${d.acquired || ""}</td>
-      <td class="num dim">${d.price ? yen(d.price) : "—"}</td>
+      <td class="num dim">${d.price ? money(d.price, d.currency) : "—"}</td>
       <td class="memo">${d.note || ""}</td>
     </tr>`).join("");
-  const spendTotal = rows.reduce((s, d) => s + (d.price || 0), 0);
+  const spendTotal = rows.reduce((s, d) => s + asJpy(d.price || 0, d.currency), 0);
   tfoot.innerHTML = `
     <tr>
-      <td></td><td>合計（${rows.length}作品）</td><td></td>
+      <td></td><td>合計（${rows.length}作品・円換算）</td><td></td>
       <td class="num dim">${yen(spendTotal)}</td><td></td>
     </tr>`;
 }
@@ -1138,7 +1146,8 @@ function renderDigital() {
 // サブスクリプション（固定費）— 月額換算で集計。総資産には合算しない
 function renderSubs() {
   const rows = subLedger();
-  const monthly = s => s.cycle === "年" ? (s.amount || 0) / 12 : (s.amount || 0);
+  // 月額換算は常に円（ドル建てはレートで換算）
+  const monthly = s => (s.cycle === "年" ? asJpy(s.amount || 0, s.currency) / 12 : asJpy(s.amount || 0, s.currency));
   const monTotal = rows.reduce((sum, s) => sum + monthly(s), 0);
   const yrTotal = monTotal * 12;
   document.getElementById("sub-summary").innerHTML = `
@@ -1153,7 +1162,7 @@ function renderSubs() {
       <td>${s.name}</td>
       <td class="dim">${s.category || "—"}</td>
       <td class="dim">${s.cycle || "月"}額</td>
-      <td class="num">${yen(s.amount || 0)}</td>
+      <td class="num">${money(s.amount || 0, s.currency)}</td>
       <td class="num dim">${yen(Math.round(monthly(s)))}</td>
       <td class="dim">${s.next || ""}</td>
     </tr>`).join("");
@@ -1704,7 +1713,8 @@ function renderAll() { renderAssets(); renderPsa(); renderGold(); renderPlants()
 
 // DATA全体を反映（データ差し替え後の全再描画）
 function renderEverything() {
-  document.getElementById("asof").textContent = "更新日: " + (DATA.asOf || "");
+  // 為替レートを併記（ドル建て資産の換算根拠を見えるようにする＝透明性）
+  document.getElementById("asof").textContent = "更新日: " + (DATA.asOf || "") + (DATA.usdJpy ? "／$1=¥" + DATA.usdJpy : "");
   renderAll();
   renderProjects();
   drawTrend();
