@@ -201,12 +201,14 @@ const LEDGERS = [
       { key: "currency", label: "通貨", sel: [["", "円（¥）"], ["USD", "ドル（$）"]], hint: "ドルは設定レート（手動更新の資産額）で円換算" },
       { key: "acquired", label: "取得年月", placeholder: "2026-07", hint: "任意" },
     ] },
-  { cat: "goldHoldings", title: "金（現物）", emoji: "🪙", sumField: "value", inTotal: true,
-    disp: i => ({ main: i.name, sub: [i.weight ? i.weight + "g" : "", i.acquired].filter(Boolean).join(" / ") }),
+  { cat: "goldHoldings", title: "金（現物）", emoji: "🪙", sumField: "value", inTotal: true, qtyCalc: true,
+    disp: i => ({ main: i.name + (i.qty > 1 ? ` ×${i.qty}` : ""), sub: [(i.qty && i.unitValue != null) ? "単価" + fmtMoney(i.unitValue, i.currency) : "", i.weight ? i.weight + "g" : "", i.acquired].filter(Boolean).join(" / ") }),
     fields: [
       { key: "name",   label: "品目",      req: true, placeholder: "地金 100g" },
+      { key: "qty",    label: "個数", num: true, hint: "単価と一緒に入れると 時価＝個数×単価 を自動計算" },
+      { key: "unitValue", label: "単価（1個あたり）", num: true, hint: "任意" },
       { key: "weight", label: "重量（g）", num: true, hint: "任意" },
-      { key: "value",  label: "時価", req: true, num: true },
+      { key: "value",  label: "時価（合計）", num: true, hint: "個数×単価を入力した場合は自動計算されるので空欄可" },
       { key: "cost",   label: "取得価格", num: true, hint: "任意" },
       { key: "currency", label: "通貨", sel: [["", "円（¥）"], ["USD", "ドル（$）"]], hint: "ドルは設定レート（手動更新の資産額）で円換算" },
       { key: "acquired", label: "取得年月", placeholder: "2026-07", hint: "任意" },
@@ -555,6 +557,12 @@ app.addEventListener("click", e => {
       if (f.req && !raw) { alert(f.label + "は必須です。"); return; }
       if (!raw) continue;
       item[f.key] = f.num ? Number(raw.replace(/,/g, "")) : raw;
+    }
+    // 個数×単価の自動計算（金カード等 qtyCalc:true）。時価(value)は保存時に実額として確定させる
+    // （ダッシュボード側は従来どおり value を合計するだけでよい＝計算式を持たない）
+    if (l.qtyCalc) {
+      if (item.qty > 0 && item.unitValue > 0) item.value = Math.round(item.qty * item.unitValue * 100) / 100;
+      if (item.value == null) { alert("時価（合計）を入力するか、個数と単価を入力してください。"); return; }
     }
     // フラグは pushOp（内部で render()）の「前」に消す。後から消すと再描画が
     // 編集状態のまま走り、フォームが開いたまま残る→もう一度押すと editing=null の
