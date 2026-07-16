@@ -273,7 +273,7 @@ const SCALARS = [
 /* ---------- 基本ユーティリティ ---------- */
 const yen = n => "¥" + Number(n || 0).toLocaleString("ja-JP");
 // 通貨対応: currency:"USD" の項目はドル表示、合計は usdJpy レートで円換算する
-const fmtMoney = (n, cur) => cur === "USD" ? "$" + Number(n || 0).toLocaleString("en-US") : yen(n);
+const fmtMoney = (n, cur) => cur === "USD" ? "$" + Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: 2 }) : yen(n);
 const toJpy = (n, cur, rate) => Math.round(Number(n || 0) * (cur === "USD" ? (rate || 150) : 1));
 function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function newId() { return (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : "a" + Date.now() + Math.random().toString(36).slice(2); }
@@ -409,7 +409,7 @@ function fieldHtml(f, val) {
   // sel: [[値, 表示名], ...] のセレクタ欄（通貨など）。値""が既定
   const input = f.sel
     ? `<select class="fin" data-fld="${f.key}">${f.sel.map(([sv, st]) => `<option value="${esc(sv)}"${String(v) === sv ? " selected" : ""}>${st}</option>`).join("")}</select>`
-    : `<input class="fin" data-fld="${f.key}" type="${f.num ? "number" : "text"}" inputmode="${f.num ? "numeric" : "text"}"
+    : `<input class="fin" data-fld="${f.key}" type="${f.num ? "number" : "text"}" inputmode="${f.num ? "decimal" : "text"}"${f.num ? ' step="any"' : ""}
       value="${esc(v)}" placeholder="${esc(f.placeholder || "")}" autocapitalize="off" autocorrect="off">`;
   return `<div class="frow"><span class="flabel">${f.label}${f.req ? " *" : ""}</span>
     ${input}
@@ -460,7 +460,7 @@ function scalarsCard(d) {
       ? ((d.assets || []).find(a => a.name === s.name) || {}).value || 0
       : d[s.field] || 0;
     return `<div class="frow"><span class="flabel">${s.label}</span>
-      <input class="fin" data-scalar="${idx}" type="number" inputmode="numeric" value="${cur}">
+      <input class="fin" data-scalar="${idx}" type="number" inputmode="decimal" step="any" value="${cur}">
       ${s.hint ? `<span class="fhint">${s.hint}</span>` : ""}</div>`;
   }).join("");
   return `<div class="card">
