@@ -167,10 +167,10 @@
 /* ================================================================
    データ仕様
    保存先: Hayahide-Log/dashboard.json（ダッシュボードと同一ファイル・同一スキーマ）
-   このアプリが管理するのは資産関連フィールドのみ:
+   このアプリが管理するフィールド:
      assets（現金の固定値） / collectionOther / otherMisc /
      psaCards / goldHoldings / landHoldings / plants / digital /
-     subscriptions / history（月次推移） / asOf
+     subscriptions / certifications（資格） / history（月次推移） / asOf
    それ以外のフィールド（projects・skills・counters 等）には触れず、
    読み込んだ値をそのまま書き戻す（ダッシュボード側の管理領域を壊さない）。
 
@@ -241,6 +241,12 @@ const LEDGERS = [
       { key: "cycle",    label: "周期（月/年）", def: "月", hint: "月 または 年" },
       { key: "category", label: "分類", placeholder: "動画", hint: "任意" },
       { key: "next",     label: "次回更新日", placeholder: "2026-08-01", hint: "任意" },
+    ] },
+  { cat: "certifications", title: "資格", emoji: "📜", noValue: true,
+    disp: i => ({ main: i.name, sub: i.date || "" }),
+    fields: [
+      { key: "name", label: "資格名", req: true, placeholder: "基本情報技術者" },
+      { key: "date", label: "取得年月", placeholder: "2026-07", hint: "任意" },
     ] },
 ];
 
@@ -373,14 +379,14 @@ function fieldHtml(f, val) {
 
 function ledgerCard(l, d) {
   const arr = d[l.cat] || [];
-  const sum = arr.reduce((s, i) => s + (i[l.sumField] || 0), 0);
+  const sum = l.noValue ? 0 : arr.reduce((s, i) => s + (i[l.sumField] || 0), 0);
   const isEdit = editing && editing.cat === l.cat;
   const editItem = isEdit ? arr.find(x => (editing.id && x.id === editing.id) || itemKey(x) === editing.match) : null;
   const rows = arr.length ? arr.slice().reverse().map(i => {
     const dp = l.disp(i);
     return `<div class="irow">
       <span class="iname">${esc(dp.main || "")}${dp.sub ? `<br><span class="isub">${esc(dp.sub)}</span>` : ""}</span>
-      <span class="ival">${yen(i[l.sumField])}</span>
+      ${l.noValue ? "" : `<span class="ival">${yen(i[l.sumField])}</span>`}
       <span class="iact">
         <button class="cbtn ibtn" data-edit="${l.cat}" data-id="${esc(i.id || "")}" data-match="${esc(i.id ? "" : itemKey(i))}">編集</button>
         <button class="cbtn ibtn" data-del="${l.cat}" data-id="${esc(i.id || "")}" data-match="${esc(i.id ? "" : itemKey(i))}">削除</button>
@@ -390,7 +396,7 @@ function ledgerCard(l, d) {
   const formOpen = openForm === l.cat || isEdit;
   return `<div class="card" data-cat="${l.cat}">
     <div class="chead"><span class="cemoji">${l.emoji}</span><span class="cname">${l.title}</span>
-      <span class="csum"><b>${arr.length}</b>件 ／ <b>${yen(sum)}</b>${l.inTotal ? "" : "<br>総資産に含めない"}</span></div>
+      <span class="csum"><b>${arr.length}</b>件${l.noValue ? "" : ` ／ <b>${yen(sum)}</b>`}${(l.inTotal || l.noValue) ? "" : "<br>総資産に含めない"}</span></div>
     ${l.note ? `<div class="fhint" style="margin-bottom:8px">${l.note}</div>` : ""}
     <div class="items">${rows}</div>
     <div class="cfoot"><button class="cbtn rec" data-open="${l.cat}">${formOpen ? "フォームを閉じる" : "＋ 追加"}</button></div>
