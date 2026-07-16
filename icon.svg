@@ -1,13 +1,11 @@
 <svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
-  <!-- Shiden Dashboard アイコン。
-       紫電Expense の原本アイコン（= dashboard/counter/icon.svg の雷と完全に同一）を流用し、
-       ライフロガー用のハートは除いた「紫電（雷）単体」版。favicon とヘッダー印に使用する。
-       PNGが必要ならこのSVGを512px/192pxでラスタライズする。 -->
+  <!-- Shiden Dashboard アプリアイコン（ホーム画面 / PWA 用）。
+       正本ルール: docs/SHIDEN_ICON_GUIDE.md。稲妻マスター・背景・色トークンは固定し、
+       個性はモチーフ1つ＝「棒グラフ（無彩色・ダッシュボード感）」。パターンB（右下・白フチ）。
+       白フチ SW=60 は scale0.42 で稲妻と同じ約12.6px（§3の式 SW=25/S）。 -->
   <defs>
     <radialGradient id="bgr" cx="0.5" cy="0.3" r="1.0">
-      <stop offset="0" stop-color="#4d357e"/>
-      <stop offset="0.55" stop-color="#35245c"/>
-      <stop offset="1" stop-color="#1d1136"/>
+      <stop offset="0" stop-color="#4d357e"/><stop offset="0.55" stop-color="#35245c"/><stop offset="1" stop-color="#1d1136"/>
     </radialGradient>
     <linearGradient id="bolt" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#fde047"/><stop offset="0.5" stop-color="#f59e0b"/><stop offset="1" stop-color="#d97706"/>
@@ -15,15 +13,22 @@
     <linearGradient id="edge" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#a855f7"/><stop offset="1" stop-color="#6d28d9"/>
     </linearGradient>
-    <filter id="sh" x="-30%" y="-30%" width="160%" height="160%">
-      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#7c3aed" flood-opacity="0.6"/>
-    </filter>
+    <!-- 棒グラフの塗り：無彩色（背景の紫・稲妻の金とケンカさせない） -->
+    <linearGradient id="dash" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f5f2fa"/><stop offset="1" stop-color="#c7c1d6"/>
+    </linearGradient>
+    <filter id="sh" x="-30%" y="-30%" width="160%" height="160%"><feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#7c3aed" flood-opacity="0.6"/></filter>
+    <filter id="hsh" x="-50%" y="-50%" width="200%" height="200%"><feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/></filter>
   </defs>
-  <!-- 角丸の背景（favicon/ヘッダーで映えるアプリアイコン風） -->
-  <rect width="512" height="512" rx="112" fill="url(#bgr)"/>
-  <!-- 雷（紫電Expense と完全に同一・主役） -->
+  <rect width="512" height="512" fill="url(#bgr)"/>
+  <!-- 稲妻（主役・共通・変更禁止） -->
   <g transform="translate(48 56) scale(0.78)" filter="url(#sh)">
     <path d="M296 36 L138 296 L238 296 L198 476 L396 208 L286 208 L352 36 Z" fill="none" stroke="#f5f2fa" stroke-width="72" stroke-linejoin="round"/>
     <path d="M296 36 L138 296 L238 296 L198 476 L396 208 L286 208 L352 36 Z" fill="url(#bolt)" stroke="url(#edge)" stroke-width="40" stroke-linejoin="round"/>
+  </g>
+  <!-- モチーフ：棒グラフ（右下・白フチ）。3本の上昇バーを共通ベースラインで連結した1シルエット -->
+  <g transform="translate(391 401) scale(0.42) translate(-256 -250)" filter="url(#hsh)">
+    <path d="M51 376 V288 H129 V376 H217 V206 H295 V376 H383 V124 H461 V376 Z" fill="none" stroke="#fff" stroke-width="60" stroke-linejoin="round"/>
+    <path d="M51 376 V288 H129 V376 H217 V206 H295 V376 H383 V124 H461 V376 Z" fill="url(#dash)"/>
   </g>
 </svg>
