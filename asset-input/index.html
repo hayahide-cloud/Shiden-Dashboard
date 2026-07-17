@@ -210,10 +210,10 @@ const LEDGERS = [
     ] },
   { cat: "goldHoldings", title: "金（現物）", emoji: "🪙", sumField: "value", inTotal: true, qtyCalc: true,
     disp: (i, d) => {
-      const rate = (d && d.goldGramJpy) || 0;
-      const auto = (i.priceMode || "auto") !== "manual";
-      const unit = auto
-        ? (i.weight > 0 && rate > 0 ? yen(Math.round(i.weight * (i.weightUnit === "ozt" ? OZT_G : 1) * rate)) + "・自動" : "重量未設定")
+      const mode = i.priceMode || "auto";
+      const rate = mode === "silver" ? ((d && d.silverGramJpy) || 0) : ((d && d.goldGramJpy) || 0);
+      const unit = mode !== "manual"
+        ? (i.weight > 0 && rate > 0 ? yen(Math.round(i.weight * (i.weightUnit === "ozt" ? OZT_G : 1) * rate)) + (mode === "silver" ? "・自動(銀)" : "・自動") : (i.weight > 0 ? "レート未設定" : "重量未設定"))
         : (i.unitValue != null ? fmtMoney(i.unitValue, i.currency) + "・手入力" : "単価未設定");
       return { main: i.name + (i.qty > 1 ? ` ×${i.qty}` : ""), sub: ["単価" + unit, i.weight ? i.weight + (i.weightUnit === "ozt" ? "ozt" : "g") : "", i.acquired].filter(Boolean).join(" / ") };
     },
@@ -222,7 +222,7 @@ const LEDGERS = [
       { key: "qty",    label: "個数", num: true, hint: "未入力=1個。入手は一覧の「＋個数」でも記録できる" },
       { key: "weight", label: "重量（1個あたり）", num: true, hint: "自動計算モードでは必須" },
       { key: "weightUnit", label: "重量の単位", sel: [["", "g（グラム）"], ["ozt", "トロイオンス（1ozt≒31.1035g）"]] },
-      { key: "priceMode", label: "単価の決め方", def: "auto", sel: [["auto", "自動（金レート×重量）"], ["manual", "単価を手入力"]], hint: "プレミアが乗る景品や銀は手入力に" },
+      { key: "priceMode", label: "単価の決め方", def: "auto", sel: [["auto", "自動（金レート×重量）"], ["silver", "自動（銀レート×重量）"], ["manual", "単価を手入力"]], hint: "プレミアが乗る景品は手入力に" },
       { key: "unitValue", label: "単価（1個あたり・手入力モード用）", num: true },
       { key: "value",  label: "時価（合計）", num: true, hint: "通常は自動計算されるので入力不要（手入力モードで単価が無い場合のみ直接入力）" },
       { key: "cost",   label: "取得価格", num: true, hint: "任意" },
@@ -310,13 +310,17 @@ function goldGrams(it) { return (it.weight > 0 ? it.weight * (it.weightUnit === 
 // 金カード全品目の時価を現在のレートで確定させる（表示・保存の直前に必ず通す）。
 // 値を実額としてdashboard.jsonに書き込むため、ダッシュボード側は計算式を持たずに済む
 function recalcGold(d) {
-  const rate = d.goldGramJpy || 0;
+  const rate = d.goldGramJpy || 0, silverRate = d.silverGramJpy || 0;
   (d.goldHoldings || []).forEach(it => {
-    if ((it.priceMode || "auto") === "manual") {
+    const mode = it.priceMode || "auto";
+    if (mode === "manual") {
       if ((it.qty || 0) > 0 && it.unitValue > 0) it.value = Math.round((it.qty || 1) * it.unitValue * 100) / 100;
-    } else if (it.weight > 0 && rate > 0) {
-      it.value = Math.round(goldGrams(it) * rate);
-      delete it.currency; // レートは円建てのため自動計算の品目は常に円
+    } else {
+      const r = mode === "silver" ? silverRate : rate; // 銀貨は銀レート・それ以外は金レート
+      if (it.weight > 0 && r > 0) {
+        it.value = Math.round(goldGrams(it) * r);
+        delete it.currency; // レートは円建てのため自動計算の品目は常に円
+      }
     }
   });
   return d;
@@ -351,7 +355,7 @@ function skeleton() {
       { name: "その他",       value: "auto", color: "--s5", note: "植物コレクション＋機材等の合計" },
     ],
     psaCards: [], collectionOther: 0, goldHoldings: [], landHoldings: [], plants: [], otherMisc: 0,
-    usdJpy: 150, goldGramJpy: 0, digital: [], subscriptions: [], quotes: [], history: [],
+    usdJpy: 150, goldGramJpy: 0, silverGramJpy: 0, digital: [], subscriptions: [], quotes: [], history: [],
     counters: [], health: [], goshuin: [], projects: [], certifications: [], skills: [],
   };
 }
@@ -433,6 +437,7 @@ function migrateLand(d) {
   d.landHoldings = d.landHoldings || [];
   if (d.usdJpy == null) d.usdJpy = 150; // 為替レート未設定の既存データに既定値を補う
   if (d.goldGramJpy == null) d.goldGramJpy = 0; // 金レート（1g=円）。0=未設定（自動計算は動かない）
+  if (d.silverGramJpy == null) d.silverGramJpy = 0; // 銀レート（1g=円）。銀貨の自動計算に使う
   const a = (d.assets || []).find(x => x.name === "土地・不動産");
   if (a && a.value !== "auto") {
     if (typeof a.value === "number" && a.value > 0) d.landHoldings.push({ name: "土地・不動産（移行分）", value: a.value });
@@ -528,13 +533,18 @@ function ledgerCard(l, d) {
     <div class="chead"><span class="cemoji">${l.emoji}</span><span class="cname">${l.title}</span>
       <span class="csum"><b>${arr.length}</b>件${l.noValue ? "" : ` ／ <b>${yen(sum)}</b>`}${(l.inTotal || l.noValue) ? "" : "<br>総資産に含めない"}</span></div>
     ${l.cat === "goldHoldings" ? (() => {
-      // 金カード最上部: 金レート（1g=円）の手動入力と、総保有g（重量×個数・ozt換算）
-      const grams = Math.round(arr.reduce((s, it) => s + goldGrams(it), 0) * 1000) / 1000;
-      const rate = d.goldGramJpy || 0;
+      // 金カード最上部: 金・銀レート（1g=円）の手動入力と、金/銀それぞれの総保有g（重量×個数・ozt換算）
+      const gAuto = arr.filter(it => (it.priceMode || "auto") !== "silver");
+      const gSilver = arr.filter(it => (it.priceMode || "auto") === "silver");
+      const gramsGold = Math.round(gAuto.reduce((s, it) => s + goldGrams(it), 0) * 1000) / 1000;
+      const gramsSilver = Math.round(gSilver.reduce((s, it) => s + goldGrams(it), 0) * 1000) / 1000;
+      const rate = d.goldGramJpy || 0, silverRate = d.silverGramJpy || 0;
       return `<div class="frow" style="margin-bottom:2px"><span class="flabel">金レート（1g＝円・手動更新）</span>
-        <input class="fin" id="gold-rate" type="number" inputmode="decimal" step="any" value="${rate || ""}" placeholder="例: 17000" style="flex:1 1 8em">
-        <button class="cbtn" id="gold-rate-save">反映</button></div>
-      <div class="fhint" style="margin-bottom:10px">総保有 <b>${grams}g</b>${rate ? `（g換算評価 ${yen(Math.round(grams * rate))}）` : ""} ／ 「自動」の品目はこのレート×重量で時価が決まる</div>`;
+        <input class="fin" id="gold-rate" type="number" inputmode="decimal" step="any" value="${rate || ""}" placeholder="例: 17000" style="flex:1 1 8em"></div>
+      <div class="frow" style="margin-bottom:2px"><span class="flabel">銀レート（1g＝円・手動更新）</span>
+        <input class="fin" id="silver-rate" type="number" inputmode="decimal" step="any" value="${silverRate || ""}" placeholder="例: 200" style="flex:1 1 8em">
+        <button class="cbtn" id="metal-rate-save">反映</button></div>
+      <div class="fhint" style="margin-bottom:10px">総保有 金 <b>${gramsGold}g</b>${rate ? `（${yen(Math.round(gramsGold * rate))}）` : ""} ／ 銀 <b>${gramsSilver}g</b>${silverRate ? `（${yen(Math.round(gramsSilver * silverRate))}）` : ""} ／ 「自動」の品目はレート×重量で時価が決まる</div>`;
     })() : ""}
     ${l.note ? `<div class="fhint" style="margin-bottom:8px">${l.note}</div>` : ""}
     ${sortRow}
@@ -717,11 +727,17 @@ app.addEventListener("click", e => {
     }
     return;
   }
-  if (btn.id === "gold-rate-save") { // 金レート（1g=円）を反映 → 自動計算の品目が再評価される
-    const el = document.getElementById("gold-rate");
-    if (!el || el.value.trim() === "" || isNaN(Number(el.value)) || Number(el.value) < 0) { alert("金レートを数値で入力してください。"); return; }
-    const v = Number(el.value);
-    if (v !== (d.goldGramJpy || 0)) pushOp({ t: "scalar", field: "goldGramJpy", value: v });
+  if (btn.id === "metal-rate-save") { // 金・銀レート（1g=円）を反映 → 自動計算の品目が再評価される
+    // pushOp内のrender()でDOMが再構築されるため、入力値は先に全部読み切ってから操作を積む
+    const pairs = [["gold-rate", "goldGramJpy", "金"], ["silver-rate", "silverGramJpy", "銀"]];
+    const reads = [];
+    for (const [elId, field, label] of pairs) {
+      const el = document.getElementById(elId);
+      if (!el || el.value.trim() === "") continue; // 空欄は据え置き
+      if (isNaN(Number(el.value)) || Number(el.value) < 0) { alert(label + "レートを数値で入力してください。"); return; }
+      reads.push([field, Number(el.value)]);
+    }
+    reads.forEach(([field, v]) => { if (v !== (d[field] || 0)) pushOp({ t: "scalar", field, value: v }); });
     return;
   }
   if (btn.id === "scalar-save") { // 固定値の資産額を反映（変更があった項目のみ操作を積む）
