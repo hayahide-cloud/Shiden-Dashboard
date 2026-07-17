@@ -542,11 +542,9 @@ function ledgerCard(l, d) {
       const gramsGold = Math.round(gAuto.reduce((s, it) => s + goldGrams(it), 0) * 1000) / 1000;
       const gramsSilver = Math.round(gSilver.reduce((s, it) => s + goldGrams(it), 0) * 1000) / 1000;
       const rate = d.goldGramJpy || 0, silverRate = d.silverGramJpy || 0;
-      return `<div class="frow" style="margin-bottom:2px"><span class="flabel">金レート（1g＝円・手動更新）</span>
-        <input class="fin" id="gold-rate" type="number" inputmode="decimal" step="any" value="${rate || ""}" placeholder="例: 17000" style="flex:1 1 8em"></div>
-      <div class="frow" style="margin-bottom:2px"><span class="flabel">銀レート（1g＝円・手動更新）</span>
-        <input class="fin" id="silver-rate" type="number" inputmode="decimal" step="any" value="${silverRate || ""}" placeholder="例: 200" style="flex:1 1 8em">
-        <button class="cbtn" id="metal-rate-save">反映</button></div>
+      // レートは GitHub Actions が毎朝自動更新するため入力欄は置かない（表示のみ）
+      const updated = d.metalRatesInfo && d.metalRatesInfo.updated ? "・最終更新 " + mdhm(d.metalRatesInfo.updated) : "";
+      return `<div class="fhint" style="margin-bottom:2px">金レート <b>${rate ? yen(rate) : "未取得"}</b>/g ／ 銀レート <b>${silverRate ? yen(silverRate) : "未取得"}</b>/g（毎朝07:00に自動更新${updated}）</div>
       <div class="fhint" style="margin-bottom:10px">総保有 金 <b>${gramsGold}g</b>${rate ? `（g換算 ${yen(Math.round(gramsGold * rate))}）` : ""} ／ 銀 <b>${gramsSilver}g</b>${silverRate ? `（g換算 ${yen(Math.round(gramsSilver * silverRate))}）` : ""} ／ 手入力品も重量があれば集計に含む</div>`;
     })() : ""}
     ${l.note ? `<div class="fhint" style="margin-bottom:8px">${l.note}</div>` : ""}
@@ -728,19 +726,6 @@ app.addEventListener("click", e => {
       openForm = null; // 同上: 先に閉じてから描画（連打による二重追加を防ぐ）
       pushOp({ t: "add", cat, item });
     }
-    return;
-  }
-  if (btn.id === "metal-rate-save") { // 金・銀レート（1g=円）を反映 → 自動計算の品目が再評価される
-    // pushOp内のrender()でDOMが再構築されるため、入力値は先に全部読み切ってから操作を積む
-    const pairs = [["gold-rate", "goldGramJpy", "金"], ["silver-rate", "silverGramJpy", "銀"]];
-    const reads = [];
-    for (const [elId, field, label] of pairs) {
-      const el = document.getElementById(elId);
-      if (!el || el.value.trim() === "") continue; // 空欄は据え置き
-      if (isNaN(Number(el.value)) || Number(el.value) < 0) { alert(label + "レートを数値で入力してください。"); return; }
-      reads.push([field, Number(el.value)]);
-    }
-    reads.forEach(([field, v]) => { if (v !== (d[field] || 0)) pushOp({ t: "scalar", field, value: v }); });
     return;
   }
   if (btn.id === "scalar-save") { // 固定値の資産額を反映（変更があった項目のみ操作を積む）
