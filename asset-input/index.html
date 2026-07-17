@@ -295,7 +295,7 @@ const SCALARS = [
   { t: "asset",  name: "現金・預金",   label: "現金・預金（円）" },
   { t: "scalar", field: "collectionOther", label: "コレクションその他（円）", hint: "未鑑定カード・BOX等の推定時価合計。PSA合計に加算される" },
   { t: "scalar", field: "otherMisc",       label: "その他（機材等）（円）",   hint: "植物合計に加算される" },
-  { t: "scalar", field: "usdJpy",          label: "為替レート（1ドル＝円）", hint: "ドル建て資産の円換算に使う。手動で更新する（AIや自動取得はしない）" },
+  { t: "scalar", field: "usdJpy",          label: "為替レート（1ドル＝円）", hint: "ドル建て資産の円換算に使う。毎朝07:00に自動更新（手動入力も可・翌朝上書き）" },
 ];
 
 /* ---------- 基本ユーティリティ ---------- */
