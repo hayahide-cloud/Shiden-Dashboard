@@ -176,7 +176,8 @@
    このアプリが管理するフィールド:
      assets（現金の固定値） / collectionOther / otherMisc /
      psaCards / goldHoldings / landHoldings / plants / digital /
-     subscriptions / certifications（資格） / history（月次推移） / asOf
+     subscriptions / certifications（資格） / quotes（好きな言葉） /
+     history（月次推移） / asOf
    それ以外のフィールド（projects・skills・counters 等）には触れず、
    読み込んだ値をそのまま書き戻す（ダッシュボード側の管理領域を壊さない）。
 
@@ -202,12 +203,13 @@ const LEDGERS = [
       { key: "acquired", label: "取得年月", placeholder: "2026-07", hint: "任意" },
     ] },
   { cat: "goldHoldings", title: "金（現物）", emoji: "🪙", sumField: "value", inTotal: true, qtyCalc: true,
-    disp: i => ({ main: i.name + (i.qty > 1 ? ` ×${i.qty}` : ""), sub: [(i.qty && i.unitValue != null) ? "単価" + fmtMoney(i.unitValue, i.currency) : "", i.weight ? i.weight + "g" : "", i.acquired].filter(Boolean).join(" / ") }),
+    disp: i => ({ main: i.name + (i.qty > 1 ? ` ×${i.qty}` : ""), sub: [(i.qty && i.unitValue != null) ? "単価" + fmtMoney(i.unitValue, i.currency) : "", i.weight ? i.weight + (i.weightUnit === "ozt" ? "ozt" : "g") : "", i.acquired].filter(Boolean).join(" / ") }),
     fields: [
       { key: "name",   label: "品目",      req: true, placeholder: "地金 100g" },
       { key: "qty",    label: "個数", num: true, hint: "単価と一緒に入れると 時価＝個数×単価 を自動計算" },
       { key: "unitValue", label: "単価（1個あたり）", num: true, hint: "任意" },
-      { key: "weight", label: "重量（g）", num: true, hint: "任意" },
+      { key: "weight", label: "重量", num: true, hint: "任意（単位は下で選択）" },
+      { key: "weightUnit", label: "重量の単位", sel: [["", "g（グラム）"], ["ozt", "トロイオンス（1ozt≒31.1035g）"]] },
       { key: "value",  label: "時価（合計）", num: true, hint: "個数×単価を入力した場合は自動計算されるので空欄可" },
       { key: "cost",   label: "取得価格", num: true, hint: "任意" },
       { key: "currency", label: "通貨", sel: [["", "円（¥）"], ["USD", "ドル（$）"]], hint: "ドルは設定レート（手動更新の資産額）で円換算" },
@@ -262,6 +264,14 @@ const LEDGERS = [
       { key: "name", label: "資格名", req: true, placeholder: "基本情報技術者" },
       { key: "date", label: "取得年月", placeholder: "2026-07", hint: "任意" },
     ] },
+  { cat: "quotes", title: "好きな言葉", emoji: "💬", noValue: true, nameField: "text",
+    disp: i => ({ main: "「" + i.text + "」", sub: [i.by, i.date, i.note].filter(Boolean).join(" / ") }),
+    fields: [
+      { key: "text", label: "言葉", req: true, placeholder: "初心忘るべからず" },
+      { key: "by",   label: "出典・誰の言葉", placeholder: "世阿弥", hint: "任意" },
+      { key: "note", label: "メモ", hint: "出会った経緯・好きな理由など（任意）" },
+      { key: "date", label: "登録年月", placeholder: "2026-07", hint: "任意" },
+    ] },
 ];
 
 // 固定値の資産額（一覧を持たない項目）。t:"asset"=DATA.assets の value / t:"scalar"=DATA直下の数値
@@ -304,7 +314,7 @@ function skeleton() {
       { name: "その他",       value: "auto", color: "--s5", note: "植物コレクション＋機材等の合計" },
     ],
     psaCards: [], collectionOther: 0, goldHoldings: [], landHoldings: [], plants: [], otherMisc: 0,
-    usdJpy: 150, digital: [], subscriptions: [], history: [],
+    usdJpy: 150, digital: [], subscriptions: [], quotes: [], history: [],
     counters: [], health: [], goshuin: [], projects: [], certifications: [], skills: [],
   };
 }

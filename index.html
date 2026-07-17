@@ -505,7 +505,7 @@
     </div>
     <div style="overflow-x:auto">
       <table class="psa" id="gold-table">
-        <thead><tr><th>品目</th><th class="num">重量(g)</th><th>取得</th><th class="num">取得価格</th><th class="num">時価</th><th class="num">含み損益</th></tr></thead>
+        <thead><tr><th>品目</th><th class="num">重量</th><th>取得</th><th class="num">取得価格</th><th class="num">時価</th><th class="num">含み損益</th></tr></thead>
         <tbody></tbody>
         <tfoot></tfoot>
       </table>
@@ -1020,12 +1020,15 @@ function renderPsa() {
 // 金（現物）台帳
 function renderGold() {
   const rows = goldLedger();
+  // 重量はg/トロイオンス(ozt)の混在があり得るため、行は単位付き表示・合計はg換算
+  const OZT_G = 31.1035;
+  const inGrams = g => (g.weight || 0) * (g.weightUnit === "ozt" ? OZT_G : 1);
   const tbody = document.querySelector("#gold-table tbody");
   const tfoot = document.querySelector("#gold-table tfoot");
   tbody.innerHTML = rows.map(g => `
     <tr>
       <td>${g.name}</td>
-      <td class="num dim">${g.weight ? g.weight.toLocaleString("ja-JP") : "—"}</td>
+      <td class="num dim">${g.weight ? g.weight.toLocaleString("ja-JP") + (g.weightUnit === "ozt" ? " ozt" : " g") : "—"}</td>
       <td class="dim">${g.acquired || ""}</td>
       <td class="num dim">${g.cost ? money(g.cost, g.currency) : "—"}</td>
       <td class="num">${money(g.value, g.currency)}</td>
@@ -1033,11 +1036,11 @@ function renderGold() {
     </tr>`).join("");
   const valTotal = rows.reduce((s, g) => s + asJpy(g.value, g.currency), 0);
   const costTotal = rows.reduce((s, g) => s + asJpy(g.cost || 0, g.currency), 0);
-  const wTotal = rows.reduce((s, g) => s + (g.weight || 0), 0);
+  const wTotal = rows.reduce((s, g) => s + inGrams(g), 0);
   tfoot.innerHTML = `
     <tr>
       <td>合計（${rows.length}点・円換算）</td>
-      <td class="num dim">${wTotal.toLocaleString("ja-JP")}</td><td></td>
+      <td class="num dim">${Math.round(wTotal * 10) / 10} g換算</td><td></td>
       <td class="num dim">${yen(costTotal)}</td>
       <td class="num">${yen(valTotal)}</td>
       <td class="num">${fmtDelta(valTotal - costTotal)}</td>
