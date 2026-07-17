@@ -209,14 +209,22 @@ const LEDGERS = [
       { key: "acquired", label: "取得年月", placeholder: "2026-07", hint: "任意" },
     ] },
   { cat: "goldHoldings", title: "金（現物）", emoji: "🪙", sumField: "value", inTotal: true, qtyCalc: true,
-    disp: i => ({ main: i.name + (i.qty > 1 ? ` ×${i.qty}` : ""), sub: [(i.qty && i.unitValue != null) ? "単価" + fmtMoney(i.unitValue, i.currency) : "", i.weight ? i.weight + (i.weightUnit === "ozt" ? "ozt" : "g") : "", i.acquired].filter(Boolean).join(" / ") }),
+    disp: (i, d) => {
+      const rate = (d && d.goldGramJpy) || 0;
+      const auto = (i.priceMode || "auto") !== "manual";
+      const unit = auto
+        ? (i.weight > 0 && rate > 0 ? yen(Math.round(i.weight * (i.weightUnit === "ozt" ? OZT_G : 1) * rate)) + "・自動" : "重量未設定")
+        : (i.unitValue != null ? fmtMoney(i.unitValue, i.currency) + "・手入力" : "単価未設定");
+      return { main: i.name + (i.qty > 1 ? ` ×${i.qty}` : ""), sub: ["単価" + unit, i.weight ? i.weight + (i.weightUnit === "ozt" ? "ozt" : "g") : "", i.acquired].filter(Boolean).join(" / ") };
+    },
     fields: [
       { key: "name",   label: "品目",      req: true, placeholder: "地金 100g" },
-      { key: "qty",    label: "個数", num: true, hint: "単価と一緒に入れると 時価＝個数×単価 を自動計算" },
-      { key: "unitValue", label: "単価（1個あたり）", num: true, hint: "任意" },
-      { key: "weight", label: "重量", num: true, hint: "任意（単位は下で選択）" },
+      { key: "qty",    label: "個数", num: true, hint: "未入力=1個。入手は一覧の「＋個数」でも記録できる" },
+      { key: "weight", label: "重量（1個あたり）", num: true, hint: "自動計算モードでは必須" },
       { key: "weightUnit", label: "重量の単位", sel: [["", "g（グラム）"], ["ozt", "トロイオンス（1ozt≒31.1035g）"]] },
-      { key: "value",  label: "時価（合計）", num: true, hint: "個数×単価を入力した場合は自動計算されるので空欄可" },
+      { key: "priceMode", label: "単価の決め方", def: "auto", sel: [["auto", "自動（金レート×重量）"], ["manual", "単価を手入力"]], hint: "プレミアが乗る景品や銀は手入力に" },
+      { key: "unitValue", label: "単価（1個あたり・手入力モード用）", num: true },
+      { key: "value",  label: "時価（合計）", num: true, hint: "通常は自動計算されるので入力不要（手入力モードで単価が無い場合のみ直接入力）" },
       { key: "cost",   label: "取得価格", num: true, hint: "任意" },
       { key: "currency", label: "通貨", sel: [["", "円（¥）"], ["USD", "ドル（$）"]], hint: "ドルは設定レート（手動更新の資産額）で円換算" },
       { key: "acquired", label: "取得年月", placeholder: "2026-07", hint: "任意" },
@@ -293,6 +301,26 @@ const yen = n => "¥" + Number(n || 0).toLocaleString("ja-JP");
 // 通貨対応: currency:"USD" の項目はドル表示、合計は usdJpy レートで円換算する
 const fmtMoney = (n, cur) => cur === "USD" ? "$" + Number(n || 0).toLocaleString("en-US", { maximumFractionDigits: 2 }) : yen(n);
 const toJpy = (n, cur, rate) => Math.round(Number(n || 0) * (cur === "USD" ? (rate || 150) : 1));
+
+/* ---------- 金の計算 ----------
+   金レート（goldGramJpy: 1g＝円・手動更新）から、自動計算モードの品目の時価を求める。
+   総重量g = 1個あたり重量（ozt は 31.1035g 換算）× 個数 */
+const OZT_G = 31.1035;
+function goldGrams(it) { return (it.weight > 0 ? it.weight * (it.weightUnit === "ozt" ? OZT_G : 1) : 0) * (it.qty || 1); }
+// 金カード全品目の時価を現在のレートで確定させる（表示・保存の直前に必ず通す）。
+// 値を実額としてdashboard.jsonに書き込むため、ダッシュボード側は計算式を持たずに済む
+function recalcGold(d) {
+  const rate = d.goldGramJpy || 0;
+  (d.goldHoldings || []).forEach(it => {
+    if ((it.priceMode || "auto") === "manual") {
+      if ((it.qty || 0) > 0 && it.unitValue > 0) it.value = Math.round((it.qty || 1) * it.unitValue * 100) / 100;
+    } else if (it.weight > 0 && rate > 0) {
+      it.value = Math.round(goldGrams(it) * rate);
+      delete it.currency; // レートは円建てのため自動計算の品目は常に円
+    }
+  });
+  return d;
+}
 function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 function newId() { return (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : "a" + Date.now() + Math.random().toString(36).slice(2); }
 function today() { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
@@ -323,7 +351,7 @@ function skeleton() {
       { name: "その他",       value: "auto", color: "--s5", note: "植物コレクション＋機材等の合計" },
     ],
     psaCards: [], collectionOther: 0, goldHoldings: [], landHoldings: [], plants: [], otherMisc: 0,
-    usdJpy: 150, digital: [], subscriptions: [], quotes: [], history: [],
+    usdJpy: 150, goldGramJpy: 0, digital: [], subscriptions: [], quotes: [], history: [],
     counters: [], health: [], goshuin: [], projects: [], certifications: [], skills: [],
   };
 }
@@ -358,8 +386,7 @@ function applyOps(data, opList) {
         it.log = it.log || [];
         if (!it.log.some(e => e.id === op.opId)) {
           it.log.push({ id: op.opId, ts: op.ts, n: op.n });
-          it.qty = (it.qty || 0) + op.n;
-          if (it.unitValue > 0) it.value = Math.round(it.qty * it.unitValue * 100) / 100;
+          it.qty = (it.qty || 0) + op.n; // 時価は recalcGold が個数変化を反映する
         }
       }
     } else if (op.t === "qtylogdel") {
@@ -369,8 +396,7 @@ function applyOps(data, opList) {
         const it = arr[i], li = (it.log || []).findIndex(e => e.id === op.logId);
         if (li >= 0) {
           it.qty = Math.max(0, (it.qty || 0) - it.log[li].n);
-          it.log.splice(li, 1);
-          if (it.unitValue > 0) it.value = Math.round(it.qty * it.unitValue * 100) / 100;
+          it.log.splice(li, 1); // 時価は recalcGold が個数変化を反映する
         }
       }
     } else if (op.t === "del") {
@@ -399,13 +425,14 @@ function ensureIds(data) {
 
 /* ---------- 表示用データ（読み込み済みリモート＋未同期の操作） ---------- */
 let DATA = null; // 最後に読み込んだ（or 保存した）dashboard.json。null=未読込
-function viewData() { return applyOps(migrateLand(clone(DATA || skeleton())), ops()); }
+function viewData() { return recalcGold(applyOps(migrateLand(clone(DATA || skeleton())), ops())); }
 
 // 旧形式（土地・不動産が固定額）→ 土地台帳への移行。
 // 固定額が入っていた場合は台帳1件に変換してから "auto"（台帳合計）に切り替える
 function migrateLand(d) {
   d.landHoldings = d.landHoldings || [];
   if (d.usdJpy == null) d.usdJpy = 150; // 為替レート未設定の既存データに既定値を補う
+  if (d.goldGramJpy == null) d.goldGramJpy = 0; // 金レート（1g=円）。0=未設定（自動計算は動かない）
   const a = (d.assets || []).find(x => x.name === "土地・不動産");
   if (a && a.value !== "auto") {
     if (typeof a.value === "number" && a.value > 0) d.landHoldings.push({ name: "土地・不動産（移行分）", value: a.value });
@@ -471,7 +498,7 @@ function ledgerCard(l, d) {
   const isEdit = editing && editing.cat === l.cat;
   const editItem = isEdit ? arr.find(x => (editing.id && x.id === editing.id) || itemKey(x) === editing.match) : null;
   const rows = arr.length ? sortedItems(l, arr, d.usdJpy).map(i => {
-    const dp = l.disp(i);
+    const dp = l.disp(i, d);
     const ref = `data-id="${esc(i.id || "")}" data-match="${esc(i.id ? "" : itemKey(i))}"`;
     // 金カード（qtyCalc）: ＋個数（入手記録）と、入手履歴の開閉
     const logKey = l.cat + ":" + (i.id || itemKey(i));
@@ -500,6 +527,15 @@ function ledgerCard(l, d) {
   return `<div class="card" data-cat="${l.cat}">
     <div class="chead"><span class="cemoji">${l.emoji}</span><span class="cname">${l.title}</span>
       <span class="csum"><b>${arr.length}</b>件${l.noValue ? "" : ` ／ <b>${yen(sum)}</b>`}${(l.inTotal || l.noValue) ? "" : "<br>総資産に含めない"}</span></div>
+    ${l.cat === "goldHoldings" ? (() => {
+      // 金カード最上部: 金レート（1g=円）の手動入力と、総保有g（重量×個数・ozt換算）
+      const grams = Math.round(arr.reduce((s, it) => s + goldGrams(it), 0) * 1000) / 1000;
+      const rate = d.goldGramJpy || 0;
+      return `<div class="frow" style="margin-bottom:2px"><span class="flabel">金レート（1g＝円・手動更新）</span>
+        <input class="fin" id="gold-rate" type="number" inputmode="decimal" step="any" value="${rate || ""}" placeholder="例: 17000" style="flex:1 1 8em">
+        <button class="cbtn" id="gold-rate-save">反映</button></div>
+      <div class="fhint" style="margin-bottom:10px">総保有 <b>${grams}g</b>${rate ? `（g換算評価 ${yen(Math.round(grams * rate))}）` : ""} ／ 「自動」の品目はこのレート×重量で時価が決まる</div>`;
+    })() : ""}
     ${l.note ? `<div class="fhint" style="margin-bottom:8px">${l.note}</div>` : ""}
     ${sortRow}
     <div class="items">${rows}</div>
@@ -658,11 +694,14 @@ app.addEventListener("click", e => {
       if (!raw) continue;
       item[f.key] = f.num ? Number(raw.replace(/,/g, "")) : raw;
     }
-    // 個数×単価の自動計算（金カード等 qtyCalc:true）。時価(value)は保存時に実額として確定させる
-    // （ダッシュボード側は従来どおり value を合計するだけでよい＝計算式を持たない）
+    // 金カード: 時価の確定は recalcGold（レート×重量 or 個数×単価）が担うため、ここではモード別の必須チェックのみ
     if (l.qtyCalc) {
-      if (item.qty > 0 && item.unitValue > 0) item.value = Math.round(item.qty * item.unitValue * 100) / 100;
-      if (item.value == null) { alert("時価（合計）を入力するか、個数と単価を入力してください。"); return; }
+      if ((item.priceMode || "auto") === "manual") {
+        if (!(item.unitValue > 0) && item.value == null) { alert("手入力モードでは「単価」か「時価（合計）」を入力してください。"); return; }
+      } else {
+        if (!(item.weight > 0)) { alert("自動計算には「重量（1個あたり）」が必要です。重量が無い品目は単価の決め方を「手入力」にしてください。"); return; }
+        delete item.currency; // 自動計算（金レート）は円建て
+      }
     }
     // フラグは pushOp（内部で render()）の「前」に消す。後から消すと再描画が
     // 編集状態のまま走り、フォームが開いたまま残る→もう一度押すと editing=null の
@@ -676,6 +715,13 @@ app.addEventListener("click", e => {
       openForm = null; // 同上: 先に閉じてから描画（連打による二重追加を防ぐ）
       pushOp({ t: "add", cat, item });
     }
+    return;
+  }
+  if (btn.id === "gold-rate-save") { // 金レート（1g=円）を反映 → 自動計算の品目が再評価される
+    const el = document.getElementById("gold-rate");
+    if (!el || el.value.trim() === "" || isNaN(Number(el.value)) || Number(el.value) < 0) { alert("金レートを数値で入力してください。"); return; }
+    const v = Number(el.value);
+    if (v !== (d.goldGramJpy || 0)) pushOp({ t: "scalar", field: "goldGramJpy", value: v });
     return;
   }
   if (btn.id === "scalar-save") { // 固定値の資産額を反映（変更があった項目のみ操作を積む）
@@ -755,7 +801,7 @@ async function syncOnce(c) {
     if (remote.data) DATA = remote.data;
     return;
   }
-  const merged = applyOps(migrateLand(remote.data || skeleton()), clone(opsSnap));
+  const merged = recalcGold(applyOps(migrateLand(remote.data || skeleton()), clone(opsSnap)));
   merged.asOf = today(); // 変更を保存する時だけ更新日を進める
   ensureIds(merged);
   await ghPut(c, merged, remote.sha);
