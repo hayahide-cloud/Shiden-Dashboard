@@ -121,6 +121,12 @@
   .iempty { color: var(--muted); font-size: 12px; padding: 6px 0; }
   .cfoot { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
 
+  /* 個数の入手ログ（金カード） */
+  .loglist { padding: 2px 0 8px 10px; border-bottom: 1px solid var(--grid); }
+  .logrow { display: flex; gap: 10px; align-items: center; font-size: 12px; color: var(--muted); padding: 3px 0; }
+  .logrow b { color: var(--ink-2); font-weight: 700; }
+  .logrow .ibtn { margin-left: auto; }
+
   footer { color: var(--muted); font-size: 11px; text-align: center; margin-top: 8px; }
 </style>
 </head>
@@ -291,6 +297,9 @@ function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<"
 function newId() { return (self.crypto && crypto.randomUUID) ? crypto.randomUUID() : "a" + Date.now() + Math.random().toString(36).slice(2); }
 function today() { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
 function thisMonth() { return today().slice(0, 7); }
+// datetime-local入力用のローカル時刻文字列(YYYY-MM-DDTHH:MM)と履歴表示用(M/D HH:MM)
+function toLocalInput(d) { const x = new Date(d); x.setMinutes(x.getMinutes() - x.getTimezoneOffset()); return x.toISOString().slice(0, 16); }
+function mdhm(ts) { const d = new Date(ts); return (d.getMonth() + 1) + "/" + d.getDate() + " " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
 const clone = o => JSON.parse(JSON.stringify(o));
 
 /* ---------- 操作キュー（未同期の変更） ---------- */
@@ -338,7 +347,32 @@ function applyOps(data, opList) {
       if (i >= 0) arr[i] = clone(op.item); else arr.push(clone(op.item));
     } else if (op.t === "upd") {
       const arr = data[op.cat] || [], i = findIndex(arr, op);
-      if (i >= 0) arr[i] = Object.assign({ id: arr[i].id || op.id }, clone(op.item));
+      // 入手ログ(log)はフォーム項目に無いため、編集（全項目置換）でも失われないよう引き継ぐ
+      if (i >= 0) arr[i] = Object.assign({ id: arr[i].id || op.id }, arr[i].log ? { log: arr[i].log } : {}, clone(op.item));
+    } else if (op.t === "qtyadd") {
+      // 個数の入手記録: ログに1件追記し、合計個数と時価（単価があれば）を再計算。
+      // opId をログ側にも持たせ、同じ操作が再適用されても二重加算しない（冪等）
+      const arr = data[op.cat] || [], i = findIndex(arr, op);
+      if (i >= 0) {
+        const it = arr[i];
+        it.log = it.log || [];
+        if (!it.log.some(e => e.id === op.opId)) {
+          it.log.push({ id: op.opId, ts: op.ts, n: op.n });
+          it.qty = (it.qty || 0) + op.n;
+          if (it.unitValue > 0) it.value = Math.round(it.qty * it.unitValue * 100) / 100;
+        }
+      }
+    } else if (op.t === "qtylogdel") {
+      // 入手記録の取り消し: ログから除去し、その分の個数を引いて時価を再計算
+      const arr = data[op.cat] || [], i = findIndex(arr, op);
+      if (i >= 0) {
+        const it = arr[i], li = (it.log || []).findIndex(e => e.id === op.logId);
+        if (li >= 0) {
+          it.qty = Math.max(0, (it.qty || 0) - it.log[li].n);
+          it.log.splice(li, 1);
+          if (it.unitValue > 0) it.value = Math.round(it.qty * it.unitValue * 100) / 100;
+        }
+      }
     } else if (op.t === "del") {
       const arr = data[op.cat] || [], i = findIndex(arr, op);
       if (i >= 0) arr.splice(i, 1);
@@ -415,6 +449,8 @@ function sortedItems(l, arr, rate) {
 const app = document.getElementById("app");
 let editing = null;   // { cat, id, match } 編集中の項目。null=新規追加モード
 let openForm = null;  // フォームを開いているカテゴリ
+let qtyAdding = null; // { cat, id, match, name } ＋個数の入力パネルを開いている項目
+const logOpen = new Set(); // 入手履歴を開いている項目（cat:idキー）
 
 function fieldHtml(f, val) {
   const v = val != null ? val : (f.def || "");
@@ -436,14 +472,26 @@ function ledgerCard(l, d) {
   const editItem = isEdit ? arr.find(x => (editing.id && x.id === editing.id) || itemKey(x) === editing.match) : null;
   const rows = arr.length ? sortedItems(l, arr, d.usdJpy).map(i => {
     const dp = l.disp(i);
+    const ref = `data-id="${esc(i.id || "")}" data-match="${esc(i.id ? "" : itemKey(i))}"`;
+    // 金カード（qtyCalc）: ＋個数（入手記録）と、入手履歴の開閉
+    const logKey = l.cat + ":" + (i.id || itemKey(i));
+    const qtyBtns = l.qtyCalc
+      ? `<button class="cbtn ibtn" data-qtyadd="${l.cat}" ${ref}>＋個数</button>`
+        + ((i.log || []).length ? `<button class="cbtn ibtn" data-logtoggle="${esc(logKey)}">履歴</button>` : "")
+      : "";
+    const logList = (l.qtyCalc && logOpen.has(logKey) && (i.log || []).length)
+      ? `<div class="loglist">${i.log.slice().reverse().map(e =>
+          `<div class="logrow"><span>${mdhm(e.ts)}</span><b>+${e.n}個</b><button class="cbtn ibtn" data-logdel="${l.cat}" ${ref} data-logid="${esc(e.id)}">削除</button></div>`).join("")}</div>`
+      : "";
     return `<div class="irow">
       <span class="iname">${esc(dp.main || "")}${dp.sub ? `<br><span class="isub">${esc(dp.sub)}</span>` : ""}</span>
       ${l.noValue ? "" : `<span class="ival">${fmtMoney(i[l.sumField], i.currency)}</span>`}
       <span class="iact">
-        <button class="cbtn ibtn" data-edit="${l.cat}" data-id="${esc(i.id || "")}" data-match="${esc(i.id ? "" : itemKey(i))}">編集</button>
-        <button class="cbtn ibtn" data-del="${l.cat}" data-id="${esc(i.id || "")}" data-match="${esc(i.id ? "" : itemKey(i))}">削除</button>
+        ${qtyBtns}
+        <button class="cbtn ibtn" data-edit="${l.cat}" ${ref}>編集</button>
+        <button class="cbtn ibtn" data-del="${l.cat}" ${ref}>削除</button>
       </span>
-    </div>`;
+    </div>${logList}`;
   }).join("") : `<div class="iempty">まだ登録がありません</div>`;
   const formOpen = openForm === l.cat || isEdit;
   const mode = sortPrefs()[l.cat] || "added";
@@ -455,6 +503,17 @@ function ledgerCard(l, d) {
     ${l.note ? `<div class="fhint" style="margin-bottom:8px">${l.note}</div>` : ""}
     ${sortRow}
     <div class="items">${rows}</div>
+    ${qtyAdding && qtyAdding.cat === l.cat ? `
+    <div class="addform open" data-qtypanel>
+      <div class="frow"><span class="flabel">「${esc(qtyAdding.name)}」の入手を記録（合計個数と時価に自動加算）</span>
+        <input class="fin" id="qtyadd-n" type="number" inputmode="numeric" value="1" style="flex:0 1 6em">
+        <input class="fin" id="qtyadd-dt" type="datetime-local" value="${toLocalInput(new Date())}" style="flex:1 1 11em">
+      </div>
+      <div class="form-actions">
+        <button class="cbtn rec" data-qtysubmit="1">この個数を記録</button>
+        <button class="cbtn undo" data-qtycancel="1">キャンセル</button>
+      </div>
+    </div>` : ""}
     <div class="cfoot"><button class="cbtn rec" data-open="${l.cat}">${formOpen ? "フォームを閉じる" : "＋ 追加"}</button></div>
     <div class="addform${formOpen ? " open" : ""}" data-form="${l.cat}">
       ${l.fields.map(f => fieldHtml(f, editItem ? editItem[f.key] : null)).join("")}
@@ -543,6 +602,37 @@ app.addEventListener("click", e => {
   if (btn.dataset.sortcat) { // 並び替えの切替（表示のみ・端末に記憶）
     setSortPref(btn.dataset.sortcat, btn.dataset.sortmode);
     return render();
+  }
+
+  if (btn.dataset.qtyadd) { // ＋個数（入手記録）パネルを開く
+    const arr = d[btn.dataset.qtyadd] || [];
+    const it = arr[findIndex(arr, { id: btn.dataset.id || null, match: btn.dataset.match || null })];
+    qtyAdding = { cat: btn.dataset.qtyadd, id: btn.dataset.id || null, match: btn.dataset.match || null, name: it ? it.name : "" };
+    render();
+    const panel = app.querySelector("[data-qtypanel]");
+    if (panel) panel.scrollIntoView({ block: "nearest" });
+    return;
+  }
+  if (btn.dataset.qtycancel) { qtyAdding = null; render(); return; }
+  if (btn.dataset.qtysubmit) { // 入手を記録（日時＋個数のログ→合計へ自動加算）
+    const n = Number(document.getElementById("qtyadd-n").value);
+    const dt = document.getElementById("qtyadd-dt").value;
+    if (!(n > 0) || !Number.isInteger(n)) { alert("個数は1以上の整数で入力してください。"); return; }
+    if (!dt) { alert("日時を入力してください。"); return; }
+    const target = qtyAdding;
+    qtyAdding = null; // フラグは記録処理（内部で再描画）の前に消す
+    pushOp({ t: "qtyadd", cat: target.cat, id: target.id, match: target.match, n, ts: new Date(dt).toISOString() });
+    return;
+  }
+  if (btn.dataset.logtoggle) { // 入手履歴の開閉
+    const k = btn.dataset.logtoggle;
+    logOpen.has(k) ? logOpen.delete(k) : logOpen.add(k);
+    return render();
+  }
+  if (btn.dataset.logdel) { // 入手記録の取り消し（個数・時価も戻る）
+    if (!confirm("この入手記録を取り消しますか？（個数と時価も戻ります）")) return;
+    pushOp({ t: "qtylogdel", cat: btn.dataset.logdel, id: btn.dataset.id || null, match: btn.dataset.match || null, logId: btn.dataset.logid });
+    return;
   }
 
   if (btn.dataset.edit) { // 台帳項目の編集開始（フォームに値を流し込む）
