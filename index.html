@@ -455,7 +455,7 @@
       </div>
     </div>
     <div class="sync-cfg" id="gh-cfg-panel">
-      <label>GitHub Private リポジトリの記録（lifelogger）を読み込み推移を表示し、資産データは同じリポ（Hayahide-Log）の dashboard.json に読み書きします。Fine-grained トークンは Hayahide-Log の Contents読み書きで発行してください。記録はカウンターページ、資産の手入力は asset-input ページから行います。</label>
+      <label>GitHub Private リポジトリの記録（lifelogger）を読み込み推移を表示し、資産データは同じリポ（Hayahide-Log）の dashboard.json に読み書きします。Fine-grained トークンは Hayahide-Log の Contents読み書きで発行してください。記録はカウンターページ、資産の手入力は Shiden Assets（hayahide-cloud.github.io/Shiden-Assets/）から行います。</label>
       <div class="cfg-grid">
         <input id="cfg-owner" placeholder="owner（例: hayahide-cloud）">
         <input id="cfg-repo"  placeholder="lifeloggerリポ（例: Hayahide-Log）">
@@ -1520,7 +1520,7 @@ function renderEverything() {
    入れた端末でのみ dashboard.json を読み込み・保存する。
    保存先は lifelogger の記録と同じ非公開リポ Hayahide-Log（2026-07-16
    オーナー決定。cfg.assetRepo を設定すれば別リポにも分離できる）。
-   日常の入力はスマホ用の手入力アプリ（asset-input/）が同じファイルに
+   日常の入力はスマホ用の手入力アプリ（独立リポ Shiden-Assets）が同じファイルに
    書き込み、ここでは読み込み・表示と「GitHubにデータ保存」を担う。
    ================================================================ */
 (function dashboardData() {
