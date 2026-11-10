@@ -675,6 +675,29 @@
     </div>
   </div>
 
+  <!-- 紫電アプリ一覧（これまで作ったアプリへのリンク集） -->
+  <div class="card">
+    <h2>紫電アプリ</h2>
+    <div class="applinks">
+      <a class="applink" href="https://hayahide-cloud.github.io/Shiden-Tasks/" target="_blank" rel="noopener">
+        <span class="ico">✅</span>
+        <span class="txt"><b>Shiden Tasks</b><small>タスク管理</small></span>
+      </a>
+      <a class="applink" href="https://hayahide-cloud.github.io/Shiden-LifeLogger/" target="_blank" rel="noopener">
+        <span class="ico">❤️</span>
+        <span class="txt"><b>Shiden LifeLogger</b><small>日次ライフログ</small></span>
+      </a>
+      <a class="applink" href="https://hayahide-cloud.github.io/Shiden-Expense/" target="_blank" rel="noopener">
+        <span class="ico">🧾</span>
+        <span class="txt"><b>Shiden Expense</b><small>家計簿・支出管理</small></span>
+      </a>
+      <a class="applink" href="https://github.com/hayahide-cloud/Shiden-Assets" target="_blank" rel="noopener">
+        <span class="ico">🪙</span>
+        <span class="txt"><b>Shiden Assets</b><small>資産入力（GitHub）</small></span>
+      </a>
+    </div>
+  </div>
+
   <footer>正本は非公開リポジトリの dashboard.json。資産の追加・編集は Shiden Assets（手入力アプリ）で行い、このダッシュボードは表示専用 — Hayahide</footer>
 </div>
 
@@ -801,13 +824,15 @@ const SAMPLE_DATA = {
     { name: "X自動投稿ボット",           priority: "B", status: "運用中（LLM生成はAPIキー設定待ち）", progress: 85 },
     { name: "紫電オーガナイザー",        priority: "C", status: "開発中（V1 MVP実装済・実機検証待ち）", progress: 35 },
     { name: "紫電パレット",              priority: "C", status: "Phase 4 完了・Phase 5 企画中", progress: 80 },
-    { name: "紫電アーカイブ",            priority: "C", status: "計画段階",                  progress: 5 },
+    { name: "紫電アーカイブ",            priority: "C", status: "柱2 PSA在庫横断検索 機能実装済・実データ拡充フェーズ（店舗の許諾未確認）", progress: 25 },
     { name: "PSAマッチングシステム",     priority: "C", status: "調査・データ収集",           progress: 10 },
     { name: "五十嵐家アーカイブ計画",    priority: "C", status: "構想段階",                  progress: 5 },
     { name: "資産ダッシュボード",        priority: "C", status: "v1完成・手入力アプリ（Shiden Assets）稼働", progress: 60 },
     { name: "FANZAアフィリエイトボット", priority: "C", status: "計画段階",                  progress: 5 },
     { name: "ExpenseVBA（経費精算）",    priority: "C", status: "開発中",                    progress: 40 },
     { name: "Shiden-Expense（モバイル版）", priority: "C", status: "開発中",                 progress: 30 },
+    { name: "Shiden Tasks（AI補助タスク管理）", priority: "C", status: "運用開始（同期確認済・AI補助検証中）", progress: 60 },
+    { name: "スマートトラッカー経路記録（ゴルフバッグ）", priority: "C", status: "準備中（Mac mini購入待ち）", progress: 5 },
     { name: "NFCタグ勤怠管理",           priority: "E", status: "✅ 完了",                   progress: 100 },
   ],
 
