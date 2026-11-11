@@ -3,19 +3,19 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-<title>Shiden Password Manager</title>
+<title>Shiden Vault</title>
 <meta name="description" content="パスワード・トークンの暗号化保管庫（スマホ用・GitHub同期）">
 <meta name="referrer" content="no-referrer">
 <link rel="manifest" href="manifest.json">
 <link rel="icon" type="image/svg+xml" href="icon.svg">
 <link rel="apple-touch-icon" href="icon-192.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-title" content="紫電PassMgr">
+<meta name="apple-mobile-web-app-title" content="紫電Vault">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#09060f">
 <style>
   /* ================================================================
-     Shiden Password Manager — パスワード・トークンの暗号化保管庫
+     Shiden Vault — パスワード・トークンの暗号化保管庫
      Shiden Assets の技術（単一HTML・GitHub Contents API同期・
      localStorage設定・操作キュー・紫電ダークテーマ）を流用している。
 
@@ -156,7 +156,7 @@
 <body>
 <div class="wrap">
   <header>
-    <h1><img class="logo-badge" src="icon.svg" alt="紫電" width="32" height="32"><span class="brand-grad">Shiden</span>&nbsp;Password Manager</h1>
+    <h1><img class="logo-badge" src="icon.svg" alt="紫電" width="32" height="32"><span class="brand-grad">Shiden</span><span class="brand-grad">Shiden</span>&nbsp;Password Manager</h1>nbsp;Vault</h1>
     <p class="sub">パスワード・トークンの暗号化保管庫 / M.T.Works</p>
     <div class="header-underline"></div>
   </header>
@@ -189,7 +189,7 @@
   </div>
 
   <div id="app"></div>
-  <footer>Shiden Password Manager — 保管庫は端末内でマスターパスワードにより暗号化（PBKDF2 → AES-256-GCM）。<br>トークン・平文データはこの公開ページにも GitHub にも含まれません</footer>
+  <footer>Shiden Vault — 保管庫は端末内でマスターパスワードにより暗号化（PBKDF2 → AES-256-GCM）。<br>トークン・平文データはこの公開ページにも GitHub にも含まれません</footer>
 </div>
 <div id="toast"></div>
 
@@ -218,8 +218,8 @@
    アプリ固有の設定キーへ直接書き込む。別オリジン・iOS ホーム画面 PWA
    （ストレージが分離）向けには #shiden-connect=<base64url JSON> のリンク受け渡しも用意。
    ================================================================ */
-const CFG_KEY = "shiden_pm_gh_cfg", CACHE_KEY = "shiden_pm_vault_cache", OPS_KEY = "shiden_pm_ops_v1",
-      PREF_KEY = "shiden_pm_prefs", HUB_KEY = "shiden_hub_connection";
+const CFG_KEY = "shiden_vault_gh_cfg", CACHE_KEY = "shiden_vault_vault_cache", OPS_KEY = "shiden_vault_ops_v1",
+      PREF_KEY = "shiden_vault_prefs", HUB_KEY = "shiden_hub_connection";
 const KDF_ITER = 600000; // OWASP 推奨（PBKDF2-HMAC-SHA256）
 
 const TYPES = {
@@ -520,7 +520,7 @@ function hubConnection(v) { // 配布する接続情報。tokenId が "__self__"
   let token = "", label = "";
   if (!h.tokenId || h.tokenId === "__self__") { token = c.token || ""; label = "このアプリの接続トークン"; }
   else { const e = v.entries.find(x => x.id === h.tokenId); token = e ? e.secret || "" : ""; label = e ? e.name : "（削除されたトークン）"; }
-  return { v: 1, owner: h.owner || c.owner || "", repo: h.repo || c.repo || "", branch: h.branch || c.branch || "main", token, label, updated: new Date().toISOString(), source: "shiden-password-manager" };
+  return { v: 1, owner: h.owner || c.owner || "", repo: h.repo || c.repo || "", branch: h.branch || c.branch || "main", token, label, updated: new Date().toISOString(), source: "shiden-vault" };
 }
 function hubPayload(conn) { const { label, ...p } = conn; return p; }
 function appState(a) { // この端末（同一オリジン）でそのアプリが接続済みか
@@ -659,7 +659,7 @@ app.addEventListener("click", async e => {
   if (btn.id === "hub-copy") { const conn = hubConnection(v); if (conn.token) copyText(conn.token, "トークン"); return; }
   if (btn.id === "hub-register") {
     const c = getCfg();
-    await pushOp({ t: "add", item: { id: newId(), type: "token", name: `${c.repo} 用 Fine-grained token（${c.owner}）`, service: "GitHub", secret: c.token, scope: `${c.owner}/${c.repo} / Contents 読み書き`, expires: "", url: "https://github.com/settings/personal-access-tokens", note: "Shiden Password Manager の接続設定から登録。有効期限は GitHub の設定ページで確認して記入する", tags: "github 紫電", ct: Date.now(), mt: Date.now() } });
+    await pushOp({ t: "add", item: { id: newId(), type: "token", name: `${c.repo} 用 Fine-grained token（${c.owner}）`, service: "GitHub", secret: c.token, scope: `${c.owner}/${c.repo} / Contents 読み書き`, expires: "", url: "https://github.com/settings/personal-access-tokens", note: "Shiden Vault の接続設定から登録。有効期限は GitHub の設定ページで確認して記入する", tags: "github 紫電", ct: Date.now(), mt: Date.now() } });
     toast("トークンを保管庫に登録しました"); return;
   }
   if (btn.id === "hub-writeall") {

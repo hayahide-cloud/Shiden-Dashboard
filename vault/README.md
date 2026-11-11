@@ -1,10 +1,10 @@
-# Shiden Password Manager（紫電パスワードマネージャー・仮）
+# Shiden Vault（紫電パスワードマネージャー）
 
 パスワード・APIトークン・セキュアメモを **端末内で暗号化** して非公開リポジトリ `Hayahide-Log` の `vault.json` に保存する、スマホ用の単一HTMLアプリ。Shiden Assets と同じ技術（単一HTML・GitHub Contents API 同期・localStorage 設定・操作キュー・紫電ダークテーマ）で作られている。
 
-- 公開URL（暫定）: https://hayahide-cloud.github.io/Shiden-Dashboard/password-manager/
+- 公開URL（暫定）: https://hayahide-cloud.github.io/Shiden-Dashboard/vault/
 - 実データ: 非公開リポジトリ `hayahide-cloud/Hayahide-Log` の `vault.json`（暗号文のみ）
-- このフォルダは自己完結（index.html / manifest.json / icon.*）なので、そのまま独立リポジトリ（例: `Shiden-PasswordManager`）へ移設できる。移設したら Shiden Assets と同様にこの場所へ案内ページを置く
+- このフォルダは自己完結（index.html / manifest.json / icon.*）なので、そのまま独立リポジトリ（例: `Shiden-Vault`）へ移設できる。移設したら Shiden Assets と同様にこの場所へ案内ページを置く
 
 ## 安全設計
 
@@ -63,7 +63,7 @@ function adoptHubConnection() {
 `shiden_hub_connection` の形:
 
 ```json
-{ "v": 1, "owner": "hayahide-cloud", "repo": "Hayahide-Log", "branch": "main", "token": "github_pat_...", "updated": "ISO", "source": "shiden-password-manager" }
+{ "v": 1, "owner": "hayahide-cloud", "repo": "Hayahide-Log", "branch": "main", "token": "github_pat_...", "updated": "ISO", "source": "shiden-vault" }
 ```
 
 ## 初期設定

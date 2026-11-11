@@ -695,9 +695,9 @@
         <span class="ico">🪙</span>
         <span class="txt"><b>Shiden Assets</b><small>資産入力</small></span>
       </a>
-      <a class="applink" href="password-manager/" target="_blank" rel="noopener">
+      <a class="applink" href="vault/" target="_blank" rel="noopener">
         <span class="ico">🔐</span>
-        <span class="txt"><b>Shiden Password Manager</b><small>パスワード・トークン管理（仮）</small></span>
+        <span class="txt"><b>Shiden Vault</b><small>パスワード・トークン保管庫</small></span>
       </a>
     </div>
   </div>
@@ -1525,7 +1525,7 @@ function renderSkills() {
   });
   document.getElementById("gh-sync").addEventListener("click", sync);
 
-  /* ---------- 紫電ハブ接続（Shiden Password Manager からの自動接続） ----------
+  /* ---------- 紫電ハブ接続（Shiden Vault からの自動接続） ----------
      パスワードマネージャーが同一オリジン（hayahide-cloud.github.io）の localStorage
      "shiden_hub_connection" に書いた接続情報、または URL の #shiden-connect=<base64url JSON>
      から owner / repo / branch / token を受け取る。
@@ -1548,7 +1548,7 @@ function renderSkills() {
     return true;
   }
 
-  if (adoptHubConnection()) status("Shiden Password Manager の接続情報を取り込みました");
+  if (adoptHubConnection()) status("Shiden Vault の接続情報を取り込みました");
   render();
   if (cfgOk(getCfg())) { status("読込中…"); sync(); } else { status("未設定（読込設定を入力してください）"); }
 })();

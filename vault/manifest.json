@@ -1,6 +1,6 @@
 {
-  "name": "Shiden Password Manager",
-  "short_name": "紫電PassMgr",
+  "name": "Shiden Vault",
+  "short_name": "紫電Vault",
   "description": "パスワード・トークンの暗号化保管庫（GitHub同期）",
   "start_url": ".",
   "display": "standalone",
