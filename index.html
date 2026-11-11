@@ -695,6 +695,10 @@
         <span class="ico">🪙</span>
         <span class="txt"><b>Shiden Assets</b><small>資産入力</small></span>
       </a>
+      <a class="applink" href="password-manager/" target="_blank" rel="noopener">
+        <span class="ico">🔐</span>
+        <span class="txt"><b>Shiden Password Manager</b><small>パスワード・トークン管理（仮）</small></span>
+      </a>
     </div>
   </div>
 
@@ -1521,6 +1525,30 @@ function renderSkills() {
   });
   document.getElementById("gh-sync").addEventListener("click", sync);
 
+  /* ---------- 紫電ハブ接続（Shiden Password Manager からの自動接続） ----------
+     パスワードマネージャーが同一オリジン（hayahide-cloud.github.io）の localStorage
+     "shiden_hub_connection" に書いた接続情報、または URL の #shiden-connect=<base64url JSON>
+     から owner / repo / branch / token を受け取る。
+     ・ハブキー: この端末に自分の設定（トークン）が無いときだけ採用（手動設定を上書きしない）
+     ・リンク: 明示的な操作なので既存設定を更新する。取り込んだらすぐ URL から消す */
+  function adoptHubConnection() {
+    const HUB_KEY = "shiden_hub_connection";
+    const m = location.hash.match(/[#&]shiden-connect=([A-Za-z0-9_-]+)/);
+    let hub = null;
+    if (m) {
+      try { hub = JSON.parse(b64dec(m[1].replace(/-/g, "+").replace(/_/g, "/"))); } catch (e) {}
+      history.replaceState(null, "", location.pathname + location.search);
+      if (hub && hub.token) { try { localStorage.setItem(HUB_KEY, JSON.stringify(hub)); } catch (e) {} }
+    }
+    if (!hub) { try { hub = JSON.parse(localStorage.getItem(HUB_KEY)); } catch (e) {} }
+    if (!hub || !hub.token || !hub.owner || !hub.repo) return false;
+    const c = getCfg();
+    if (cfgOk(c) && !m) return false;
+    setCfg(Object.assign({}, c, { owner: hub.owner, repo: hub.repo, branch: hub.branch || "main", token: hub.token, path: c.path || "counters.json" }));
+    return true;
+  }
+
+  if (adoptHubConnection()) status("Shiden Password Manager の接続情報を取り込みました");
   render();
   if (cfgOk(getCfg())) { status("読込中…"); sync(); } else { status("未設定（読込設定を入力してください）"); }
 })();
